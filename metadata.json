@@ -1,0 +1,6 @@
+{
+  "name": "Google Sheets Header Inspector",
+  "description": "Inspect worksheets and column headers from Google Sheets spreadsheets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
