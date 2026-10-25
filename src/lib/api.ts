@@ -96,6 +96,8 @@ export async function fetchDrilldown(
   } else if (target.category === 'monthlyTrend') {
     if (target.month) params.set('month', target.month);
     if (target.metric) params.set('metric', target.metric);
+  } else if (target.category === 'project') {
+    params.set('project', target.value);
   } else if (target.category === 'facStatus') {
     params.set('facStatus', target.value);
   } else if (target.category === 'cooStatus') {

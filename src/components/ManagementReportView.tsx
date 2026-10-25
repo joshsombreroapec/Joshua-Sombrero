@@ -18,11 +18,18 @@ import {
   AlertTriangle,
   ChevronRight,
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas-pro';
-import { AnalyticsData, SummaryData, FilterState, SheetRecord } from '../lib/types';
+import {
+  AnalyticsData,
+  SummaryData,
+  FilterState,
+  SheetRecord,
+  DrilldownData,
+  DrilldownTarget,
+} from '../lib/types';
+import { fetchDrilldown } from '../lib/api';
 import { HorizontalBarChart } from './charts/HorizontalBarChart';
 import { CumulativeWeeklyKpiMatrix } from './CumulativeWeeklyKpiMatrix';
+import { DashboardDrilldownModal } from './DashboardDrilldownModal';
 
 interface ManagementReportViewProps {
   summary: SummaryData | null;
@@ -41,10 +48,30 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
   onFilterChange,
   onResetFilters,
   onNavigateToDirectory,
+  onSelectRecord,
 }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showCustomDate, setShowCustomDate] = useState(filters.datePreset === 'custom');
+
+  // Drilldown state
+  const [activeDrilldown, setActiveDrilldown] = useState<DrilldownData | null>(null);
+  const [isLoadingDrilldown, setIsLoadingDrilldown] = useState(false);
+  const [drilldownError, setDrilldownError] = useState<string | null>(null);
+
+  const handleOpenDrilldown = async (target: DrilldownTarget) => {
+    setIsLoadingDrilldown(true);
+    setDrilldownError(null);
+    try {
+      const data = await fetchDrilldown(target, filters);
+      setActiveDrilldown(data);
+    } catch (err: any) {
+      console.error('Failed to compute drilldown:', err);
+      setDrilldownError(err.message || 'Error computing visual drill-down');
+    } finally {
+      setIsLoadingDrilldown(false);
+    }
+  };
 
   const [reportDate] = useState(() => {
     return new Date().toLocaleDateString('en-US', {
@@ -57,7 +84,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
 
   if (!analytics || !summary) {
     return (
-      <div className="p-12 text-center text-[#334155] font-semibold bg-white rounded-2xl border border-[#CBD5E1] shadow-xs">
+      <div className="p-8 sm:p-12 text-center text-[#334155] font-semibold bg-white rounded-2xl border border-[#CBD5E1] shadow-xs">
         <RotateCw className="w-8 h-8 mx-auto text-[#2563EB] animate-spin mb-3" />
         <p>Loading management report metrics from Google Sheets...</p>
       </div>
@@ -191,12 +218,17 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
     document.body.removeChild(link);
   };
 
-  // Export PDF Handler - Directly downloads the Executive Management Report visual as a PDF file
+  // Export PDF Handler - Clean visual PDF fitting page width, spanning as many pages as needed with zero cut-off pages
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
     setIsExportingPdf(true);
 
     try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas-pro'),
+      ]);
+
       const element = reportRef.current;
       const originalScrollY = window.scrollY;
       window.scrollTo(0, 0);
@@ -206,36 +238,117 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
         useCORS: true,
         allowTaint: true,
         logging: false,
-        backgroundColor: '#E2E8F0',
-        windowWidth: document.documentElement.offsetWidth || 1200,
+        backgroundColor: '#F8FAFC',
+        windowWidth: document.documentElement.offsetWidth || 1280,
       });
 
       window.scrollTo(0, originalScrollY);
 
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      let position = 0;
-      let heightLeft = imgHeight;
+      // Margins in mm
+      const marginLeft = 8;
+      const marginRight = 8;
+      const marginTop = 8;
+      const marginBottom = 8;
 
-      // Add First Page
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pageHeight;
+      const printableWidth = pageWidth - marginLeft - marginRight;
+      const printableHeight = pageHeight - marginTop - marginBottom;
 
-      // Extra Pages if overflowing A4 height
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
+      const containerRect = element.getBoundingClientRect();
+
+      // Collect all safe break points from cards, sections, and table rows
+      const breakCandidates: number[] = [];
+      const breakElements = element.querySelectorAll<HTMLElement>(
+        '[data-pdf-section], tr, .p-5, .p-6, .grid > div'
+      );
+
+      breakElements.forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const bottomY = r.bottom - containerRect.top;
+        if (bottomY > 20 && bottomY < element.offsetHeight - 20) {
+          breakCandidates.push(bottomY);
+        }
+      });
+
+      const sortedBreakPoints = Array.from(new Set(breakCandidates)).sort((a, b) => a - b);
+
+      const totalCssHeight = element.offsetHeight;
+      const scaleFactor = printableWidth / element.offsetWidth; // mm per CSS px
+      const maxPageCssHeight = printableHeight / scaleFactor;
+      const canvasScale = canvas.width / element.offsetWidth;
+
+      let currentCssY = 0;
+      let pageIndex = 0;
+
+      while (currentCssY < totalCssHeight) {
+        let nextCssY = currentCssY + maxPageCssHeight;
+
+        if (nextCssY >= totalCssHeight) {
+          nextCssY = totalCssHeight;
+        } else {
+          // Find the cleanest break point in the lower portion of the page to avoid cutting off elements
+          const validBreaks = sortedBreakPoints.filter(
+            (b) => b > currentCssY + 0.45 * maxPageCssHeight && b <= nextCssY
+          );
+
+          if (validBreaks.length > 0) {
+            nextCssY = validBreaks[validBreaks.length - 1];
+          }
+        }
+
+        const sliceCssHeight = nextCssY - currentCssY;
+        if (sliceCssHeight <= 0) break;
+
+        const sliceCanvasHeight = Math.max(1, Math.round(sliceCssHeight * canvasScale));
+
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceCanvasHeight;
+        const pageCtx = pageCanvas.getContext('2d');
+
+        if (pageCtx) {
+          pageCtx.drawImage(
+            canvas,
+            0,
+            Math.round(currentCssY * canvasScale),
+            canvas.width,
+            sliceCanvasHeight,
+            0,
+            0,
+            canvas.width,
+            sliceCanvasHeight
+          );
+
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          const renderMmHeight = sliceCssHeight * scaleFactor;
+
+          if (pageIndex > 0) {
+            pdf.addPage();
+          }
+
+          pdf.addImage(
+            pageImgData,
+            'PNG',
+            marginLeft,
+            marginTop,
+            printableWidth,
+            renderMmHeight,
+            undefined,
+            'FAST'
+          );
+
+          pageIndex++;
+        }
+
+        currentCssY = nextCssY;
       }
 
       const dateStr = new Date().toISOString().split('T')[0];
@@ -248,18 +361,21 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
   };
 
   return (
-    <div ref={reportRef} className="space-y-6">
+    <div ref={reportRef} className="space-y-4 sm:space-y-6">
       {/* 1. EXECUTIVE REPORT HEADER (Top) */}
-      <div className="bg-white rounded-2xl p-6 sm:p-7 border border-[#CBD5E1] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div
+        data-pdf-section="header"
+        className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-7 border border-[#CBD5E1] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4"
+      >
         <div>
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/20">
-              <FileText className="w-5 h-5" />
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            <span className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/20">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#1E293B] tracking-tight">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-[#1E293B] tracking-tight">
               Executive Management Report
             </h2>
-            <span className="px-2.5 py-0.5 text-xs font-bold bg-[#1E293B] text-white rounded-md">
+            <span className="px-2 py-0.5 text-[10px] sm:text-xs font-bold bg-[#1E293B] text-white rounded-md">
               OFFICIAL
             </span>
           </div>
@@ -274,48 +390,46 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
           </p>
         </div>
 
-        {/* Action Buttons: Export CSV & Export PDF (Sync Data and Print/PDF removed) */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Action Buttons: Export CSV & Download PDF */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1E293B] border border-[#CBD5E1] rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1E293B] border border-[#CBD5E1] rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
           >
-            <Download className="w-4 h-4 text-[#2563EB]" />
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#2563EB]" />
             <span>Export CSV</span>
           </button>
 
           <button
             onClick={handleExportPDF}
             disabled={isExportingPdf}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer disabled:opacity-50"
           >
             {isExportingPdf ? (
-              <RotateCw className="w-4 h-4 animate-spin" />
+              <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-white" />
             ) : (
-              <FileDown className="w-4 h-4" />
+              <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
             )}
-            <span>{isExportingPdf ? 'Generating PDF...' : 'Export PDF'}</span>
+            <span>{isExportingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
           </button>
         </div>
       </div>
 
-      {/* 2. FILTER PANEL (Copied from Dashboard) */}
-      <div className="p-5 rounded-2xl bg-[#334155] border border-[#CBD5E1]/30 shadow-md space-y-4 text-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#475569]/80">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#0F172A] border border-[#CBD5E1]/20 flex items-center justify-center text-[#38bdf8]">
-              <Filter className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-                Filter Management Report
-              </h2>
-              <p className="text-xs text-[#CBD5E1] font-medium">
-                Real-time dynamic synchronization with Google Sheets database
-              </p>
-            </div>
+      {/* 2. FILTER MANAGEMENT REPORT */}
+      <div
+        data-pdf-section="filters"
+        className="bg-[#1E293B] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-[#CBD5E1] shadow-xs space-y-3 sm:space-y-4"
+      >
+        <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-[#475569] flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="p-1 rounded-md bg-[#2563EB] text-white">
+              <Filter className="w-3.5 h-3.5" />
+            </span>
+            <span className="text-xs font-extrabold text-white uppercase tracking-wide">
+              Filter Management Report
+            </span>
             {activeFilterCount > 0 && (
-              <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-[#2563EB] text-white border border-blue-400">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#2563EB] text-white">
                 {activeFilterCount} Active
               </span>
             )}
@@ -325,7 +439,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
             {activeFilterCount > 0 && (
               <button
                 onClick={onResetFilters}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-200 hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer border border-rose-400/40"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-200 hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer border border-rose-400/40"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset Filters</span>
@@ -334,17 +448,17 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
           </div>
         </div>
 
-        {/* Filter Dropdowns Grid: background #0F172A, text #FFFFFF, border #CBD5E1/40 */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Filter Dropdowns Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
           {/* Area */}
           <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
+            <label className="block text-xs font-bold text-white mb-1">
               Area
             </label>
             <select
               value={filters.area}
               onChange={(e) => onFilterChange({ area: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
+              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
             >
               <option value="" className="bg-[#0F172A] text-white">All Areas</option>
               {distinct.areas.map((a) => (
@@ -357,13 +471,13 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
 
           {/* Project */}
           <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
+            <label className="block text-xs font-bold text-white mb-1">
               Project
             </label>
             <select
               value={filters.project}
               onChange={(e) => onFilterChange({ project: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
+              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
             >
               <option value="" className="bg-[#0F172A] text-white">All Projects ({distinct.projects.length})</option>
               {distinct.projects.map((p) => (
@@ -376,13 +490,13 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
 
           {/* In charge */}
           <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
+            <label className="block text-xs font-bold text-white mb-1">
               In Charge
             </label>
             <select
               value={filters.incharge}
               onChange={(e) => onFilterChange({ incharge: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
+              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
             >
               <option value="" className="bg-[#0F172A] text-white">All Personnel</option>
               {distinct.incharge.map((i) => (
@@ -395,13 +509,13 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
 
           {/* Folder Status */}
           <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
+            <label className="block text-xs font-bold text-white mb-1">
               Folder Status
             </label>
             <select
               value={filters.folderStatus}
               onChange={(e) => onFilterChange({ folderStatus: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
+              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
             >
               <option value="" className="bg-[#0F172A] text-white">All Folders</option>
               {distinct.folderStatuses.map((f) => (
@@ -414,13 +528,13 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
 
           {/* Unit Status */}
           <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
+            <label className="block text-xs font-bold text-white mb-1">
               Unit Status
             </label>
             <select
               value={filters.unitsStatus}
               onChange={(e) => onFilterChange({ unitsStatus: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all"
+              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all"
             >
               <option value="" className="bg-[#0F172A] text-white">All Statuses</option>
               {distinct.unitsStatuses.map((s) => (
@@ -431,16 +545,16 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
             </select>
           </div>
 
-          {/* Date Range Picker (Default: All Time) */}
+          {/* Date Range Picker */}
           <div>
-            <label className="block text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
+            <label className="block text-xs font-bold text-white mb-1 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-[#38bdf8]" />
               <span>Date Range</span>
             </label>
             <select
               value={filters.datePreset || 'all'}
               onChange={(e) => handleDatePresetChange(e.target.value)}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all"
+              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all"
             >
               <option value="all" className="bg-[#0F172A] text-white">All Time (Default)</option>
               <option value="30d" className="bg-[#0F172A] text-white">Last 30 Days</option>
@@ -454,221 +568,271 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
 
         {/* Custom date range picker inputs if 'custom' selected */}
         {showCustomDate && (
-          <div className="flex items-center gap-3 pt-3 text-xs border-t border-[#475569]">
+          <div className="flex items-center gap-3 pt-2.5 text-xs border-t border-[#475569] flex-wrap">
             <span className="text-xs text-white font-bold">Custom Range:</span>
             <input
               type="date"
               value={filters.startDate || ''}
               onChange={(e) => onFilterChange({ startDate: e.target.value, datePreset: 'custom' })}
-              className="py-1.5 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white"
+              className="py-1 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white"
             />
             <span className="text-[#CBD5E1] font-bold">to</span>
             <input
               type="date"
               value={filters.endDate || ''}
               onChange={(e) => onFilterChange({ endDate: e.target.value, datePreset: 'custom' })}
-              className="py-1.5 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white"
+              className="py-1 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white"
             />
           </div>
         )}
       </div>
 
-      {/* 3. KPI SUMMARY CARDS (Copied visual from Dashboard: Total database unit, energized, ongoing works, pending/nys, add taken out, priority) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* 3. KPI SUMMARY CARDS WITH VISUAL DRILLDOWN */}
+      <div
+        data-pdf-section="kpi-cards"
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4"
+      >
         {/* Total Database Units */}
         <div
-          onClick={() => onNavigateToDirectory()}
-          className="p-5 rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          onClick={() =>
+            handleOpenDrilldown({
+              category: 'kpiCard',
+              value: 'all',
+              label: 'Total Database Baseline Units',
+            })
+          }
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
+            <span className="text-[10px] sm:text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
               Total Units
             </span>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
-              <Database className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
+              <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold font-mono text-[#1E293B] block tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[#1E293B] block tracking-tight">
               {analytics.totalUnits.toLocaleString()}
             </span>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Active Baseline</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Active Baseline</span>
           </div>
         </div>
 
-        {/* Energized - Green theme requirement */}
+        {/* Energized */}
         <div
-          onClick={() => onNavigateToDirectory({ unitsStatus: 'ENERGIZED' })}
-          className="p-5 rounded-2xl bg-emerald-50/40 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          onClick={() =>
+            handleOpenDrilldown({
+              category: 'kpiCard',
+              value: 'energized',
+              label: 'Energized Units',
+            })
+          }
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-emerald-50/40 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wide flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-emerald-800 uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-emerald-600 text-emerald-600" />
               Energized
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-emerald-700 tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-700 tracking-tight">
                 {analytics.energizedCount.toLocaleString()}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">
                 {analytics.totalUnits > 0
                   ? `${((analytics.energizedCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Completed Units</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Completed Units</span>
           </div>
         </div>
 
         {/* Ongoing Works */}
         <div
-          onClick={() => onNavigateToDirectory({ unitsStatus: 'ONGOING' })}
-          className="p-5 rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          onClick={() =>
+            handleOpenDrilldown({
+              category: 'kpiCard',
+              value: 'ongoing',
+              label: 'Ongoing Works in Pipeline',
+            })
+          }
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wide flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-[#1E293B] uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600" />
               Ongoing Works
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-              <Clock className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
                 {analytics.ongoingCount.toLocaleString()}
               </span>
-              <span className="text-xs font-mono font-extrabold text-[#1E293B]">
+              <span className="text-[11px] sm:text-xs font-mono font-extrabold text-[#1E293B]">
                 {analytics.totalUnits > 0
                   ? `${((analytics.ongoingCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">In Active Pipeline</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">In Pipeline</span>
           </div>
         </div>
 
         {/* Pending / NYS */}
         <div
-          onClick={() => onNavigateToDirectory({ unitsStatus: 'NYS' })}
-          className="p-5 rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          onClick={() =>
+            handleOpenDrilldown({
+              category: 'kpiCard',
+              value: 'nys',
+              label: 'Pending / Not Yet Started (NYS)',
+            })
+          }
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
+            <span className="text-[10px] sm:text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
               Pending / NYS
             </span>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
-              <AlertCircle className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
+              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
                 {analytics.nysCount.toLocaleString()}
               </span>
-              <span className="text-xs font-mono font-extrabold text-[#1E293B]">
+              <span className="text-[11px] sm:text-xs font-mono font-extrabold text-[#1E293B]">
                 {analytics.totalUnits > 0
                   ? `${((analytics.nysCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Not Yet Started</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Not Started</span>
           </div>
         </div>
 
-        {/* Taken Out - Folder Status Blue */}
+        {/* Taken Out */}
         <div
-          onClick={() => onNavigateToDirectory({ folderStatus: 'TAKEN OUT' })}
-          className="p-5 rounded-2xl bg-blue-50/30 border border-blue-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          onClick={() =>
+            handleOpenDrilldown({
+              category: 'kpiCard',
+              value: 'takenOut',
+              label: 'Taken Out Folders',
+            })
+          }
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-blue-50/30 border border-blue-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-blue-900 uppercase tracking-wide flex items-center gap-1.5">
-              <FolderCheck className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-blue-900 uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <FolderCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600" />
               Taken Out
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
-              <FolderCheck className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
+              <FolderCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-blue-900 tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-blue-900 tracking-tight">
                 {analytics.takenOutCount.toLocaleString()}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-300 font-mono">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-300 font-mono">
                 {analytics.totalUnits > 0
                   ? `${((analytics.takenOutCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Folders Handed Over</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Handed Over</span>
           </div>
         </div>
 
-        {/* Priority Move-In - Priority Red */}
+        {/* Priority Move-In */}
         <div
-          onClick={() => onNavigateToDirectory({ priorityMoveIn: 'PRIORITY' })}
-          className="p-5 rounded-2xl bg-red-50/30 border-2 border-red-200 hover:border-red-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          onClick={() =>
+            handleOpenDrilldown({
+              category: 'kpiCard',
+              value: 'priority',
+              label: 'Priority Move-In Units',
+            })
+          }
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-red-50/30 border-2 border-red-200 hover:border-red-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-red-800 uppercase tracking-wide flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-red-600 fill-red-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-red-800 uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600 fill-red-600" />
               Priority
             </span>
-            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700">
-              <Flame className="w-4 h-4 fill-red-600" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700">
+              <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-red-600" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-red-700 tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-red-700 tracking-tight">
                 {analytics.priorityCount.toLocaleString()}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-mono font-extrabold bg-red-100 text-red-800 border border-red-300">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-extrabold bg-red-100 text-red-800 border border-red-300">
                 {analytics.totalUnits > 0
                   ? `${((analytics.priorityCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Move-In Priorities</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Move-In Units</span>
           </div>
         </div>
       </div>
 
-      {/* 4. MAIN DASHBOARD: CUMULATIVE WEEKLY KPI MATRIX (Persistent Historical Snapshots + Live Current Week) */}
-      <CumulativeWeeklyKpiMatrix filters={filters} />
+      {/* 4. MAIN DASHBOARD: CUMULATIVE WEEKLY KPI MATRIX */}
+      <div data-pdf-section="matrix">
+        <CumulativeWeeklyKpiMatrix
+          filters={filters}
+          onDrilldown={(kpi) =>
+            handleOpenDrilldown({
+              category: 'kpiRemarks',
+              value: kpi,
+              label: `KPI Remark: ${kpi}`,
+            })
+          }
+        />
+      </div>
 
-      {/* 5. 2-COLUMN SECTION:
-          LEFT: Top 6 ENERGIZED- 1.WITHIN 21 DAYS Project + KPI Remarks Distribution
-          RIGHT: Top 6 Critical Ongoing delay project from takeout date + PWG Updates Breakdown
-      */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* 5. 2-COLUMN SECTION: Top Projects & Breakdown Charts */}
+      <div
+        data-pdf-section="analytics-grid"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start"
+      >
         {/* LEFT COLUMN: Top 6 Within 21 Days Projects & KPI Remarks Distribution */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Card: Top 6 ENERGIZED- 1.WITHIN 21 DAYS Project */}
-          <div className="p-6 rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-[#CBD5E1] mb-4">
+          <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-[#CBD5E1] mb-3 sm:mb-4 gap-2">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-blue-50 text-[#2563EB] border border-blue-200">
                   <CheckCircle2 className="w-4 h-4" />
                 </span>
                 <div>
-                  <h3 className="text-base font-bold text-[#1E293B] tracking-tight">
+                  <h3 className="text-sm sm:text-base font-bold text-[#1E293B] tracking-tight">
                     Top 6 ENERGIZED- 1.WITHIN 21 DAYS Projects
                   </h3>
-                  <p className="text-xs text-[#334155] font-semibold mt-0.5">
-                    Highest volume projects meeting the 21-day energization turnaround target
+                  <p className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5">
+                    Highest volume projects meeting 21-day turnaround target
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-[#2563EB] bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 shrink-0">
-                {analytics.within21DaysCount.toLocaleString()} Total Units
+              <span className="text-[11px] sm:text-xs font-bold text-[#2563EB] bg-blue-50 px-2 sm:px-2.5 py-1 rounded-md border border-blue-200 shrink-0">
+                {analytics.within21DaysCount.toLocaleString()} Units
               </span>
             </div>
 
@@ -677,37 +841,43 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
                 No within 21-day energization records found for current filters.
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2 sm:space-y-2.5">
                 {topWithin21.map((proj) => (
                   <div
                     key={proj.name}
-                    onClick={() => onNavigateToDirectory({ project: proj.name, unitsStatus: 'ENERGIZED' })}
-                    className="p-3 bg-slate-50 hover:bg-blue-50/50 rounded-xl border border-[#CBD5E1] hover:border-blue-300 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                    onClick={() =>
+                      handleOpenDrilldown({
+                        category: 'project',
+                        value: proj.name,
+                        label: `${proj.name} - Within 21 Days Energized`,
+                      })
+                    }
+                    className="p-2.5 sm:p-3 bg-slate-50 hover:bg-blue-50/50 rounded-xl border border-[#CBD5E1] hover:border-blue-300 transition-all cursor-pointer flex items-center justify-between gap-2.5 sm:gap-3 group"
                   >
-                    <div className="min-w-0 flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-lg bg-[#2563EB] text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-2xs">
+                    <div className="min-w-0 flex items-center gap-2.5 sm:gap-3">
+                      <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-[#2563EB] text-white text-[11px] sm:text-xs font-extrabold flex items-center justify-center shrink-0 shadow-2xs">
                         #{proj.rank}
                       </span>
                       <div className="truncate">
                         <h4 className="text-xs font-bold text-[#1E293B] group-hover:text-[#2563EB] transition-colors truncate">
                           {proj.name}
                         </h4>
-                        <div className="flex items-center gap-2 text-[11px] text-[#475569] font-medium mt-0.5">
-                          <span>{proj.totalEnergized?.toLocaleString() || 0} total energized</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] text-[#475569] font-medium mt-0.5">
+                          <span>{proj.totalEnergized?.toLocaleString() || 0} energized</span>
                           <span>•</span>
-                          <span className="text-[#2563EB] font-bold">{proj.percentage}% SLA rate</span>
+                          <span className="text-[#2563EB] font-bold">{proj.percentage}% SLA</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0 flex items-center gap-2">
+                    <div className="text-right shrink-0 flex items-center gap-1.5 sm:gap-2">
                       <div>
-                        <div className="text-sm font-extrabold font-mono text-[#2563EB]">
+                        <div className="text-xs sm:text-sm font-extrabold font-mono text-[#2563EB]">
                           {proj.count.toLocaleString()}
                         </div>
-                        <div className="text-[10px] text-[#475569] font-semibold">within 21 days</div>
+                        <div className="text-[9px] sm:text-[10px] text-[#475569] font-semibold">within 21d</div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2563EB] transition-transform group-hover:translate-x-0.5" />
+                      <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-hover:text-[#2563EB] transition-transform group-hover:translate-x-0.5" />
                     </div>
                   </div>
                 ))}
@@ -716,38 +886,42 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
           </div>
 
           {/* Chart: KPI Remarks Distribution directly below */}
-          <div className="p-6 rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
+          <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
             <HorizontalBarChart
               title="KPI Remarks Distribution"
-              subtitle="Categorized performance and turnaround timeframe analysis"
+              subtitle="Categorized performance and turnaround timeframe analysis (Click to drill down)"
               data={analytics.kpiRemarksDistribution}
               accentKey="21 DAYS"
               onItemClick={(label) => {
-                onNavigateToDirectory({ search: label });
+                handleOpenDrilldown({
+                  category: 'kpiRemarks',
+                  value: label,
+                  label: `KPI Remark: ${label}`,
+                });
               }}
             />
           </div>
         </div>
 
         {/* RIGHT COLUMN: Top 6 Critical Delay Projects & PWG Updates Breakdown */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Card: Top 6 Critical Ongoing delay project from the takeout date */}
-          <div className="p-6 rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-[#CBD5E1] mb-4">
+          <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-[#CBD5E1] mb-3 sm:mb-4 gap-2">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
                   <AlertTriangle className="w-4 h-4 text-rose-600" />
                 </span>
                 <div>
-                  <h3 className="text-base font-bold text-[#1E293B] tracking-tight">
+                  <h3 className="text-sm sm:text-base font-bold text-[#1E293B] tracking-tight">
                     Top 6 Critical Ongoing Delay Projects
                   </h3>
-                  <p className="text-xs text-[#334155] font-semibold mt-0.5">
-                    Ongoing units with longest elapsed days since folder takeout date
+                  <p className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5">
+                    Ongoing units with longest elapsed days since takeout date
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 shrink-0">
+              <span className="text-[11px] sm:text-xs font-bold text-rose-700 bg-rose-50 px-2 sm:px-2.5 py-1 rounded-md border border-rose-200 shrink-0">
                 Critical Aging
               </span>
             </div>
@@ -757,45 +931,45 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
                 No delayed ongoing takeout units found for current filters.
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2 sm:space-y-2.5">
                 {topCriticalDelay.map((proj) => (
                   <div
                     key={proj.name}
                     onClick={() =>
-                      onNavigateToDirectory({
-                        project: proj.name,
-                        unitsStatus: 'ONGOING',
-                        folderStatus: 'TAKEN OUT',
+                      handleOpenDrilldown({
+                        category: 'project',
+                        value: proj.name,
+                        label: `${proj.name} - Critical Ongoing Delayed`,
                       })
                     }
-                    className="p-3 bg-slate-50 hover:bg-rose-50/50 rounded-xl border border-[#CBD5E1] hover:border-rose-300 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                    className="p-2.5 sm:p-3 bg-slate-50 hover:bg-rose-50/50 rounded-xl border border-[#CBD5E1] hover:border-rose-300 transition-all cursor-pointer flex items-center justify-between gap-2.5 sm:gap-3 group"
                   >
-                    <div className="min-w-0 flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-lg bg-rose-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-2xs">
+                    <div className="min-w-0 flex items-center gap-2.5 sm:gap-3">
+                      <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-rose-600 text-white text-[11px] sm:text-xs font-extrabold flex items-center justify-center shrink-0 shadow-2xs">
                         #{proj.rank}
                       </span>
                       <div className="truncate">
                         <h4 className="text-xs font-bold text-[#1E293B] group-hover:text-rose-700 transition-colors truncate">
                           {proj.name}
                         </h4>
-                        <div className="flex items-center gap-2 text-[11px] text-[#475569] font-medium mt-0.5">
-                          <span>{proj.totalOngoing?.toLocaleString() || 0} total ongoing</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] text-[#475569] font-medium mt-0.5">
+                          <span>{proj.totalOngoing?.toLocaleString() || 0} ongoing</span>
                           <span>•</span>
-                          <span className="text-amber-700 font-bold">Avg {proj.avgDelayDays}d delay</span>
+                          <span className="text-amber-700 font-bold">Avg {proj.avgDelayDays}d</span>
                           <span>•</span>
                           <span className="text-rose-700 font-bold">Max {proj.maxDelayDays}d</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0 flex items-center gap-2">
+                    <div className="text-right shrink-0 flex items-center gap-1.5 sm:gap-2">
                       <div>
-                        <div className="text-sm font-extrabold font-mono text-rose-700">
+                        <div className="text-xs sm:text-sm font-extrabold font-mono text-rose-700">
                           {proj.count.toLocaleString()}
                         </div>
-                        <div className="text-[10px] text-[#475569] font-semibold">delayed units</div>
+                        <div className="text-[9px] sm:text-[10px] text-[#475569] font-semibold">delayed</div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600 transition-transform group-hover:translate-x-0.5" />
+                      <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-hover:text-rose-600 transition-transform group-hover:translate-x-0.5" />
                     </div>
                   </div>
                 ))}
@@ -804,22 +978,29 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
           </div>
 
           {/* Chart: PWG Updates Breakdown directly below */}
-          <div className="p-6 rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
+          <div className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
             <HorizontalBarChart
               title="PWG Updates Breakdown"
-              subtitle="Real-time field & engineering workflow status updates"
+              subtitle="Real-time field & engineering workflow status updates (Click to drill down)"
               data={analytics.pwgUpdatesDistribution}
               accentKey="ENERGIZED"
               onItemClick={(label) => {
-                onNavigateToDirectory({ pwgUpdates: label });
+                handleOpenDrilldown({
+                  category: 'pwgUpdates',
+                  value: label,
+                  label: `PWG Update: ${label}`,
+                });
               }}
             />
           </div>
         </div>
       </div>
 
-      {/* 5. EXECUTIVE SUMMARY NOTES & SIGN-OFF */}
-      <div className="p-5 rounded-2xl bg-white border border-[#CBD5E1] shadow-xs text-xs text-[#334155] font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 6. EXECUTIVE SUMMARY NOTES & SIGN-OFF */}
+      <div
+        data-pdf-section="notes"
+        className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] shadow-xs text-xs text-[#334155] font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+      >
         <div className="space-y-1">
           <p className="text-[#1E293B] font-bold">
             Executive Summary Notes:
@@ -828,11 +1009,27 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
             Data synced dynamically from Google Sheets (<code className="text-[#1E293B] font-bold">DATA</code> tab). Current portfolio reflects {analytics.totalUnits.toLocaleString()} units with an overall energization rate of {analytics.totalUnits > 0 ? ((analytics.energizedCount / analytics.totalUnits) * 100).toFixed(1) : '0'}%.
           </p>
         </div>
-        <div className="text-right shrink-0">
+        <div className="text-left sm:text-right shrink-0">
           <div className="text-[11px] text-[#475569]">Power-Water Group (PWG)</div>
           <div className="text-xs font-extrabold text-[#1E293B]">Project Monitoring System</div>
         </div>
       </div>
+
+      {/* 7. VISUAL INTERACTIVE DRILLDOWN MODAL */}
+      <DashboardDrilldownModal
+        drilldown={activeDrilldown}
+        isLoading={isLoadingDrilldown}
+        error={drilldownError}
+        filters={filters}
+        onClose={() => setActiveDrilldown(null)}
+        onSelectRecord={(record) => {
+          if (onSelectRecord) onSelectRecord(record);
+        }}
+        onOpenInDirectory={(drillFilterUpdates) => {
+          setActiveDrilldown(null);
+          onNavigateToDirectory(drillFilterUpdates);
+        }}
+      />
     </div>
   );
 };

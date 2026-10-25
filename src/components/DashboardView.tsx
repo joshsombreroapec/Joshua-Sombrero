@@ -357,7 +357,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* 2. LARGE KPI SUMMARY CARDS (Background white, border #CBD5E1, main text #1E293B, secondary #475569) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* 2. LARGE KPI SUMMARY CARDS (Background white, border #CBD5E1, main text #1E293B, secondary #475569) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
         {/* Total Database Units */}
         <div
           onClick={() =>
@@ -367,21 +368,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               label: 'Total Database Baseline Units',
             })
           }
-          className="p-5 rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
+            <span className="text-[10px] sm:text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
               Total Units
             </span>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
-              <Database className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
+              <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold font-mono text-[#1E293B] block tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[#1E293B] block tracking-tight">
               {analytics.totalUnits.toLocaleString()}
             </span>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Active Baseline</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Active Baseline</span>
           </div>
         </div>
 
@@ -394,29 +395,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               label: 'Energized Units',
             })
           }
-          className="p-5 rounded-2xl bg-emerald-50/40 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-emerald-50/40 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wide flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-emerald-800 uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-emerald-600 text-emerald-600" />
               Energized
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-emerald-700 tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-700 tracking-tight">
                 {analytics.energizedCount.toLocaleString()}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">
                 {analytics.totalUnits > 0
                   ? `${((analytics.energizedCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Completed Units</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Completed Units</span>
           </div>
         </div>
 
@@ -429,29 +430,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               label: 'Ongoing Works in Pipeline',
             })
           }
-          className="p-5 rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wide flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-[#1E293B] uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600" />
               Ongoing Works
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-              <Clock className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
                 {analytics.ongoingCount.toLocaleString()}
               </span>
-              <span className="text-xs font-mono font-extrabold text-[#1E293B]">
+              <span className="text-[11px] sm:text-xs font-mono font-extrabold text-[#1E293B]">
                 {analytics.totalUnits > 0
                   ? `${((analytics.ongoingCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">In Active Pipeline</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">In Pipeline</span>
           </div>
         </div>
 
@@ -464,28 +465,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               label: 'Pending / Not Yet Started (NYS)',
             })
           }
-          className="p-5 rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-[#CBD5E1] hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
+            <span className="text-[10px] sm:text-xs font-extrabold text-[#1E293B] uppercase tracking-wide">
               Pending / NYS
             </span>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
-              <AlertCircle className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[#1E293B]">
+              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-[#1E293B] tracking-tight">
                 {analytics.nysCount.toLocaleString()}
               </span>
-              <span className="text-xs font-mono font-extrabold text-[#1E293B]">
+              <span className="text-[11px] sm:text-xs font-mono font-extrabold text-[#1E293B]">
                 {analytics.totalUnits > 0
                   ? `${((analytics.nysCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Not Yet Started</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Not Started</span>
           </div>
         </div>
 
@@ -498,29 +499,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               label: 'Taken Out Folders',
             })
           }
-          className="p-5 rounded-2xl bg-blue-50/30 border border-blue-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-blue-50/30 border border-blue-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-blue-900 uppercase tracking-wide flex items-center gap-1.5">
-              <FolderCheck className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-blue-900 uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <FolderCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600" />
               Taken Out
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
-              <FolderCheck className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
+              <FolderCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-blue-900 tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-blue-900 tracking-tight">
                 {analytics.takenOutCount.toLocaleString()}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-300 font-mono">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-300 font-mono">
                 {analytics.totalUnits > 0
                   ? `${((analytics.takenOutCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Folders Handed Over</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Handed Over</span>
           </div>
         </div>
 
@@ -533,29 +534,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               label: 'Priority Move-In Units',
             })
           }
-          className="p-5 rounded-2xl bg-red-50/30 border-2 border-red-200 hover:border-red-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
+          className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-red-50/30 border-2 border-red-200 hover:border-red-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-red-800 uppercase tracking-wide flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-red-600 fill-red-600" />
+            <span className="text-[10px] sm:text-xs font-extrabold text-red-800 uppercase tracking-wide flex items-center gap-1 sm:gap-1.5">
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600 fill-red-600" />
               Priority
             </span>
-            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700">
-              <Flame className="w-4 h-4 fill-red-600" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-700">
+              <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-red-600" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold font-mono text-red-700 tracking-tight">
+          <div className="mt-2.5 sm:mt-3">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-red-700 tracking-tight">
                 {analytics.priorityCount.toLocaleString()}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-mono font-extrabold bg-red-100 text-red-800 border border-red-300">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-extrabold bg-red-100 text-red-800 border border-red-300">
                 {analytics.totalUnits > 0
                   ? `${((analytics.priorityCount / analytics.totalUnits) * 100).toFixed(1)}%`
                   : '0%'}
               </span>
             </div>
-            <span className="text-xs text-[#334155] font-semibold mt-1 block">Move-In Priorities</span>
+            <span className="text-[11px] sm:text-xs text-[#334155] font-semibold mt-0.5 sm:mt-1 block">Move-In Units</span>
           </div>
         </div>
       </div>

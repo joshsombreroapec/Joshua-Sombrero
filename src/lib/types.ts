@@ -160,6 +160,7 @@ export interface DrilldownTarget {
     | 'monthlyTrend'
     | 'kpiRemarks'
     | 'pwgUpdates'
+    | 'project'
     | 'verticalComparison'
     | 'facStatus'
     | 'cooStatus'

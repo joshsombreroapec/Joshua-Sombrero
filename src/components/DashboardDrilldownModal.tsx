@@ -67,6 +67,8 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
 
     if (target.category === 'kpiRemarks') {
       updates.search = target.value;
+    } else if (target.category === 'project') {
+      updates.project = target.value;
     } else if (target.category === 'pwgUpdates') {
       updates.pwgUpdates = target.value;
     } else if (target.category === 'kpiCard' || target.category === 'verticalComparison') {
@@ -96,50 +98,50 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-[#CBD5E1] flex flex-col max-h-[92vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-3 md:p-6 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-5xl bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-[#CBD5E1] flex flex-col max-h-[96vh] sm:max-h-[92vh] overflow-hidden">
         {/* Header - Slate #1E293B with text #FFFFFF */}
-        <div className="bg-[#1E293B] text-white px-6 py-4 flex items-center justify-between border-b border-[#CBD5E1]/30 shrink-0">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#0F172A] border border-[#CBD5E1]/30 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-[#38bdf8]" />
+        <div className="bg-[#1E293B] text-white px-3.5 py-3 sm:px-6 sm:py-4 flex items-center justify-between border-b border-[#CBD5E1]/30 shrink-0 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#0F172A] border border-[#CBD5E1]/30 flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-[#38bdf8]" />
             </div>
-            <div className="truncate">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 bg-white/10 px-2 py-0.5 rounded-full">
+            <div className="truncate min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-300 bg-white/10 px-1.5 sm:px-2 py-0.5 rounded-full">
                   Visual Drill-Down
                 </span>
                 <span className="text-xs text-slate-300 hidden sm:inline">•</span>
-                <span className="text-xs text-slate-300 truncate hidden sm:inline">
+                <span className="text-xs text-slate-300 truncate hidden md:inline">
                   Interactive Breakdown Analysis
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-white truncate mt-0.5">
+              <h2 className="text-sm sm:text-base md:text-lg font-bold text-white truncate mt-0.5">
                 {drilldown?.title || 'Loading breakdown...'}
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {drilldown && (
               <button
                 onClick={handleExportCSV}
                 disabled={isExporting}
                 title="Export this drilled-down subset directly as CSV"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-[#2563EB] hover:bg-[#1d4ed8] text-white text-[11px] sm:text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
               >
                 {isExporting ? (
                   <RotateCw className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <Download className="w-3.5 h-3.5" />
                 )}
-                <span className="hidden sm:inline">Export CSV</span>
+                <span className="hidden xs:inline sm:inline">Export CSV</span>
               </button>
             )}
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1 sm:p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -149,16 +151,16 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
 
         {/* Breakdown Subtitle & Metrics Bar */}
         {drilldown && (
-          <div className="bg-[#F8FAFC] px-5 py-2.5 border-b border-[#CBD5E1] flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
-            <div className="flex items-center gap-3">
+          <div className="bg-[#F8FAFC] px-3 sm:px-5 py-2 sm:py-2.5 border-b border-[#CBD5E1] flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
-                <span className="text-[#1E293B] font-bold">Total Units in Visual:</span>
-                <span className="font-mono font-extrabold text-[#2563EB] bg-blue-100 px-2.5 py-0.5 rounded text-xs border border-blue-300">
+                <span className="text-[#1E293B] font-bold">Total in Visual:</span>
+                <span className="font-mono font-extrabold text-[#2563EB] bg-blue-100 px-2 py-0.5 rounded text-[11px] sm:text-xs border border-blue-300">
                   {drilldown.totalUnits.toLocaleString()} units
                 </span>
               </div>
-              <span className="text-[#CBD5E1] font-bold">•</span>
-              <span className="text-[#334155] font-semibold truncate hidden md:inline">
+              <span className="text-[#CBD5E1] font-bold hidden sm:inline">•</span>
+              <span className="text-[#334155] font-semibold truncate hidden lg:inline max-w-sm">
                 {drilldown.subtitle}
               </span>
             </div>
@@ -166,17 +168,17 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
             <div className="flex items-center gap-2">
               <button
                 onClick={handleApplyToDirectory}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#2563EB] hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-[#2563EB] hover:underline cursor-pointer"
               >
-                <span>View all in Directory Table</span>
-                <ArrowUpRight className="w-4 h-4" />
+                <span>View all in Directory</span>
+                <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             </div>
           </div>
         )}
 
         {/* Tab Navigation with Slate & #2563EB active theme */}
-        <div className="px-5 pt-3 border-b border-[#CBD5E1] flex gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none bg-white">
+        <div className="px-2.5 sm:px-5 pt-2 sm:pt-3 border-b border-[#CBD5E1] flex gap-1 sm:gap-2 overflow-x-auto text-[11px] sm:text-xs shrink-0 scrollbar-none bg-white">
           <button
             onClick={() => setActiveTab('overview')}
             className={`pb-2.5 px-3 font-extrabold border-b-2 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
@@ -644,20 +646,20 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
         </div>
 
         {/* Footer Bar */}
-        <div className="bg-[#F8FAFC] px-5 py-3 border-t border-[#CBD5E1] flex items-center justify-between gap-3 text-xs shrink-0">
-          <div className="text-[#334155] font-semibold">
-            Clicking <strong className="text-[#1E293B]">Export CSV</strong> exports only the matching units for this visual.
+        <div className="bg-[#F8FAFC] px-3.5 sm:px-5 py-2.5 sm:py-3 border-t border-[#CBD5E1] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 text-[11px] sm:text-xs shrink-0">
+          <div className="text-[#334155] font-semibold text-center sm:text-left">
+            Clicking <strong className="text-[#1E293B]">Export CSV</strong> exports only matching visual units.
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 justify-end">
             <button
               onClick={handleApplyToDirectory}
-              className="px-3 py-1.5 rounded-lg border border-[#2563EB] text-[#2563EB] hover:bg-blue-50 font-bold transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg border border-[#2563EB] text-[#2563EB] hover:bg-blue-50 font-bold transition-colors cursor-pointer text-center"
             >
               Open in Directory
             </button>
             <button
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-200 text-[#1E293B] hover:bg-slate-300 font-bold transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg bg-slate-200 text-[#1E293B] hover:bg-slate-300 font-bold transition-colors cursor-pointer text-center"
             >
               Close
             </button>

@@ -1086,6 +1086,9 @@ async function startServer() {
   function calculateWeeklyMatrix(records: SheetRecord[], query: any) {
     const currentWeekInfo = getWeekRangeMondayToSunday('2026-10-24')!;
     const currentWeekKey = currentWeekInfo.weekKey;
+    const baselineWeekInfo = getWeekRangeMondayToSunday('2026-07-27')!;
+    const baselineWeekKey = baselineWeekInfo.weekKey; // '2026-07-27_2026-08-02'
+    const baselineMonTime = baselineWeekInfo.monTime;
 
     let filtered = filterRecords(records, query);
     const datePreset = ((query.datePreset as string) || 'all').trim();
@@ -1135,11 +1138,22 @@ async function startServer() {
       }
     >();
 
-    weekMap.set(currentWeekKey, {
-      ...currentWeekInfo,
-      isLive: true,
-      status: 'LIVE',
-    });
+    // Pre-populate all weekly columns starting from baseline "Jul 27-Aug 2" to current week
+    let currentIter = new Date('2026-07-27T00:00:00Z');
+    const endIter = new Date('2026-10-25T23:59:59Z');
+    while (currentIter.getTime() <= endIter.getTime()) {
+      const iterStr = currentIter.toISOString().split('T')[0];
+      const wInfo = getWeekRangeMondayToSunday(iterStr);
+      if (wInfo) {
+        const isLive = wInfo.weekKey === currentWeekKey;
+        weekMap.set(wInfo.weekKey, {
+          ...wInfo,
+          isLive,
+          status: isLive ? 'LIVE' : 'FINAL',
+        });
+      }
+      currentIter.setUTCDate(currentIter.getUTCDate() + 7);
+    }
 
     const kpiRemarksSet = new Set<string>();
     const projectsSet = new Set<string>();
@@ -1159,7 +1173,7 @@ async function startServer() {
       const proj = (r.project || '').trim() || 'Unknown Project';
       projectsSet.add(proj);
 
-      if (kpi) {
+      if (kpi && kpi.toLowerCase() !== 'unassigned remarks' && kpi.toLowerCase() !== 'unassigned' && kpi !== '-') {
         kpiRemarksSet.add(kpi);
       }
 
@@ -1168,7 +1182,11 @@ async function startServer() {
         seenUnitsTakeout.add(unitKey);
         totalTakeouts++;
 
-        const tWeek = getWeekRangeMondayToSunday(r.takeoutDate);
+        let tWeek = getWeekRangeMondayToSunday(r.takeoutDate);
+        if (!tWeek || tWeek.monTime < baselineMonTime) {
+          tWeek = baselineWeekInfo;
+        }
+
         if (tWeek) {
           if (!weekMap.has(tWeek.weekKey)) {
             const isLive = tWeek.weekKey === currentWeekKey;
@@ -1188,7 +1206,11 @@ async function startServer() {
       }
 
       const updatedDateStr = getRecordUpdatedDate(r);
-      const uWeek = getWeekRangeMondayToSunday(updatedDateStr) || currentWeekInfo;
+      let uWeek = getWeekRangeMondayToSunday(updatedDateStr);
+      // On KPI Remarks: Any data not covered before Jul 27-Aug 2 is mapped to first column "Jul 27-Aug 2"
+      if (!uWeek || uWeek.monTime < baselineMonTime) {
+        uWeek = baselineWeekInfo;
+      }
 
       if (!seenUnitsKpi.has(unitKey)) {
         seenUnitsKpi.add(unitKey);
@@ -1206,14 +1228,16 @@ async function startServer() {
           });
         }
 
-        const effectiveKpi = kpi || 'Unassigned Remarks';
-        kpiRemarksSet.add(effectiveKpi);
+        // Remove Unassigned Remarks - only track actual non-empty remarks
+        if (kpi && kpi.toLowerCase() !== 'unassigned remarks' && kpi.toLowerCase() !== 'unassigned' && kpi !== '-') {
+          kpiRemarksSet.add(kpi);
 
-        if (!liveKpiCounts.has(effectiveKpi)) {
-          liveKpiCounts.set(effectiveKpi, new Map<string, number>());
+          if (!liveKpiCounts.has(kpi)) {
+            liveKpiCounts.set(kpi, new Map<string, number>());
+          }
+          const kMap = liveKpiCounts.get(kpi)!;
+          kMap.set(uWeek.weekKey, (kMap.get(uWeek.weekKey) || 0) + 1);
         }
-        const kMap = liveKpiCounts.get(effectiveKpi)!;
-        kMap.set(uWeek.weekKey, (kMap.get(uWeek.weekKey) || 0) + 1);
       }
     });
 
@@ -1231,10 +1255,6 @@ async function startServer() {
     } else if (datePreset === '180d') {
       const cutoff = new Date('2026-10-24').getTime() - 180 * 86400000;
       sortedWeeks = sortedWeeks.filter((w) => w.sunTime >= cutoff);
-    } else {
-      if (sortedWeeks.length > 12) {
-        sortedWeeks = sortedWeeks.slice(-12);
-      }
     }
 
     if (!sortedWeeks.some((w) => w.weekKey === currentWeekKey)) {
@@ -1245,70 +1265,27 @@ async function startServer() {
       });
     }
 
-    const persistedSnapshots = loadWeeklySnapshots();
-    let updatedSnapshots = false;
-
+    // Direct dynamic weekly counts calculation (snapshot rule removed)
     const finalizedKpiCounts = new Map<string, Record<string, number>>();
     const finalizedTakeoutCounts = new Map<string, Record<string, number>>();
 
     sortedWeeks.forEach((w) => {
-      if (w.isLive) {
-        const liveKpi: Record<string, number> = {};
-        liveKpiCounts.forEach((counts, kpi) => {
-          liveKpi[kpi] = counts.get(w.weekKey) || 0;
-        });
-        finalizedKpiCounts.set(w.weekKey, liveKpi);
+      const weekKpi: Record<string, number> = {};
+      liveKpiCounts.forEach((counts, kpi) => {
+        weekKpi[kpi] = counts.get(w.weekKey) || 0;
+      });
+      finalizedKpiCounts.set(w.weekKey, weekKpi);
 
-        const liveTakeout: Record<string, number> = {};
-        liveTakeoutCounts.forEach((counts, proj) => {
-          liveTakeout[proj] = counts.get(w.weekKey) || 0;
-        });
-        finalizedTakeoutCounts.set(w.weekKey, liveTakeout);
-      } else {
-        if (persistedSnapshots[w.weekKey]) {
-          const snap = persistedSnapshots[w.weekKey];
-          finalizedKpiCounts.set(w.weekKey, snap.kpiRemarksCounts || {});
-          finalizedTakeoutCounts.set(w.weekKey, snap.takeoutCounts || {});
-        } else {
-          const frozenKpi: Record<string, number> = {};
-          liveKpiCounts.forEach((counts, kpi) => {
-            frozenKpi[kpi] = counts.get(w.weekKey) || 0;
-          });
-          finalizedKpiCounts.set(w.weekKey, frozenKpi);
-
-          const frozenTakeout: Record<string, number> = {};
-          liveTakeoutCounts.forEach((counts, proj) => {
-            frozenTakeout[proj] = counts.get(w.weekKey) || 0;
-          });
-          finalizedTakeoutCounts.set(w.weekKey, frozenTakeout);
-
-          persistedSnapshots[w.weekKey] = {
-            weekKey: w.weekKey,
-            startDate: w.monStr,
-            endDate: w.sunStr,
-            label: w.label,
-            fullLabel: w.fullLabel,
-            status: 'FINAL',
-            closedAt: new Date().toISOString(),
-            kpiRemarksCounts: frozenKpi,
-            takeoutCounts: frozenTakeout,
-          };
-          updatedSnapshots = true;
-        }
-      }
+      const weekTakeout: Record<string, number> = {};
+      liveTakeoutCounts.forEach((counts, proj) => {
+        weekTakeout[proj] = counts.get(w.weekKey) || 0;
+      });
+      finalizedTakeoutCounts.set(w.weekKey, weekTakeout);
     });
 
-    if (updatedSnapshots) {
-      saveWeeklySnapshots(persistedSnapshots);
-    }
+    const sortedKpiRemarks = Array.from(kpiRemarksSet).sort((a, b) => a.localeCompare(b));
 
-    const sortedKpiRemarks = Array.from(kpiRemarksSet).sort((a, b) => {
-      if (a === 'Unassigned Remarks') return 1;
-      if (b === 'Unassigned Remarks') return -1;
-      return a.localeCompare(b);
-    });
-
-    // 5. Cumulative KPI Matrix calculation
+    // 5. Dynamic Cumulative KPI Matrix calculation across reporting weeks (no snapshot freezing)
     let runningCumulative: Record<string, number> = {};
     let runningGrandTotal = 0;
 
@@ -1321,43 +1298,19 @@ async function startServer() {
       let weekTotal = 0;
       const currentCumulativeForWeek: Record<string, number> = {};
 
-      if (!w.isLive && persistedSnapshots[w.weekKey]?.cumulativeCounts) {
-        const storedCum = persistedSnapshots[w.weekKey].cumulativeCounts;
-        sortedKpiRemarks.forEach((kpi) => {
-          const count = weekKpi[kpi] || 0;
-          weekTotal += count;
-          currentCumulativeForWeek[kpi] =
-            storedCum[kpi] != null ? storedCum[kpi] : (runningCumulative[kpi] || 0) + count;
-        });
-        runningCumulative = { ...currentCumulativeForWeek };
-        runningGrandTotal =
-          persistedSnapshots[w.weekKey].cumulativeGrandTotal != null
-            ? persistedSnapshots[w.weekKey].cumulativeGrandTotal
-            : runningGrandTotal + weekTotal;
-      } else {
-        sortedKpiRemarks.forEach((kpi) => {
-          const count = weekKpi[kpi] || 0;
-          weekTotal += count;
-          currentCumulativeForWeek[kpi] = (runningCumulative[kpi] || 0) + count;
-        });
-        runningCumulative = { ...currentCumulativeForWeek };
-        runningGrandTotal += weekTotal;
+      sortedKpiRemarks.forEach((kpi) => {
+        const count = weekKpi[kpi] || 0;
+        weekTotal += count;
+        currentCumulativeForWeek[kpi] = (runningCumulative[kpi] || 0) + count;
+      });
 
-        if (!w.isLive && persistedSnapshots[w.weekKey]) {
-          persistedSnapshots[w.weekKey].cumulativeCounts = { ...currentCumulativeForWeek };
-          persistedSnapshots[w.weekKey].cumulativeGrandTotal = runningGrandTotal;
-          updatedSnapshots = true;
-        }
-      }
+      runningCumulative = { ...currentCumulativeForWeek };
+      runningGrandTotal += weekTotal;
 
       finalizedCumulativeKpiCounts.set(w.weekKey, currentCumulativeForWeek);
       weeklyGrandTotals[w.weekKey] = weekTotal;
       cumulativeGrandTotals[w.weekKey] = runningGrandTotal;
     });
-
-    if (updatedSnapshots) {
-      saveWeeklySnapshots(persistedSnapshots);
-    }
 
     const cumulativeKpiRows = sortedKpiRemarks.map((kpi) => {
       const weeklyCounts: Record<string, number> = {};
@@ -1606,8 +1559,10 @@ async function startServer() {
         const proj = (r.project || '').trim() || 'Unknown Project';
         projectMap[proj] = (projectMap[proj] || 0) + 1;
 
-        const kpi = (r.kpiRemarks || '').trim() || 'No KPI Remark';
-        kpiRemarksMap[kpi] = (kpiRemarksMap[kpi] || 0) + 1;
+        const kpi = (r.kpiRemarks || '').trim();
+        if (kpi && kpi.toLowerCase() !== 'unassigned remarks' && kpi.toLowerCase() !== 'unassigned' && kpi !== '-') {
+          kpiRemarksMap[kpi] = (kpiRemarksMap[kpi] || 0) + 1;
+        }
 
         const pwg = (r.pwgUpdates || '').trim() || 'No PWG Update';
         pwgUpdatesMap[pwg] = (pwgUpdatesMap[pwg] || 0) + 1;
