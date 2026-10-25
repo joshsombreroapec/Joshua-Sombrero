@@ -126,7 +126,7 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
             )}
           </div>
           <p className="text-xs text-[#334155] font-semibold mt-1">
-            Grouped comparison of unit volumes for RENZ, RONALD, and MARK across 5 status categories
+            Grouped comparison of unit volumes for RENZ, RONALD, and MARK across 5 status categories • Click bar to drill down
           </p>
         </div>
 
@@ -492,6 +492,9 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
                       : '0.0'}
                     %
                   </strong>
+                </div>
+                <div className="pt-1.5 text-center text-[10px] text-sky-300 font-semibold border-t border-slate-800">
+                  Click bar to drill down
                 </div>
               </div>
             </div>
