@@ -11,7 +11,37 @@ const __dirname = path.dirname(__filename);
 
 const SPREADSHEET_ID = '1ejSR8lencQKuBu60ozZ99yIrP2OBU91-PmkawRNz8FM';
 const SHEET_NAME = 'DATA';
-const PORT = process.env.PORT || 3000;
+
+function getServerConfig() {
+  const args = process.argv.slice(2);
+  let port = 3000;
+  let host = '0.0.0.0';
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--port' && args[i + 1]) {
+      const p = parseInt(args[i + 1], 10);
+      if (!isNaN(p)) port = p;
+      i++;
+    } else if (args[i].startsWith('--port=')) {
+      const p = parseInt(args[i].split('=')[1], 10);
+      if (!isNaN(p)) port = p;
+    } else if (args[i] === '--host' && args[i + 1]) {
+      host = args[i + 1];
+      i++;
+    } else if (args[i].startsWith('--host=')) {
+      host = args[i].split('=')[1];
+    }
+  }
+
+  // In AI Studio, dev server must bind to port 3000.
+  // process.env.PORT is often 8080 (reserved for container proxy), so only use APP_PORT if explicitly defined.
+  if (process.env.APP_PORT) {
+    const p = parseInt(process.env.APP_PORT, 10);
+    if (!isNaN(p)) port = p;
+  }
+
+  return { port, host };
+}
 
 export interface SheetRecord {
   id: number;
@@ -1776,11 +1806,16 @@ export default app;
 
 // Standalone server lifecycle (used for local development and non-serverless Node hosting)
 export async function startStandaloneServer() {
+  const { port, host } = getServerConfig();
+
   // Mount Vite or Static Files
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -1801,8 +1836,8 @@ export async function startStandaloneServer() {
     }
   }, 60 * 1000);
 
-  app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+  app.listen(port, host, () => {
+    console.log(`Server listening on http://${host}:${port}`);
   });
 }
 

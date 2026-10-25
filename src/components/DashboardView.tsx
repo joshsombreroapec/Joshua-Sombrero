@@ -693,31 +693,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         data={analytics.inchargeStatusBreakdown}
         onBarClick={(person, category) => {
           let statusFilter = '';
-          let folderFilter = '';
-          let drillMetric = '';
-
-          if (category === 'ENERGIZED') {
+          if (category === 'ENERGIZED' || category === 'ENERGIZED - 1. WITHIN 21 DAYS') {
             statusFilter = 'ENERGIZED';
-          } else if (category === 'ENERGIZED - 1. WITHIN 21 DAYS') {
-            drillMetric = 'within21days';
           } else if (category === 'ONGOING') {
             statusFilter = 'ONGOING';
           } else if (category === 'NYS') {
             statusFilter = 'NYS';
-          } else if (category === 'TAKEN OUT') {
-            drillMetric = 'takenout';
-            folderFilter = 'TAKEN OUT';
           }
-
-          // Open visual drilldown directly without modifying the global page filters
-          handleOpenDrilldown({
-            category: 'inchargeStatus',
-            value: `${person} - ${category}`,
-            label: `${person}: ${category}`,
+          onFilterChange({
             incharge: person,
             ...(statusFilter ? { unitsStatus: statusFilter } : {}),
-            ...(folderFilter ? { folderStatus: folderFilter } : {}),
-            ...(drillMetric ? { metric: drillMetric } : {}),
+            ...(category === 'TAKEN OUT' ? { folderStatus: 'TAKEN OUT' } : {}),
           });
         }}
       />

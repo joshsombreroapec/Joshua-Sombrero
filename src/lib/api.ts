@@ -104,11 +104,6 @@ export async function fetchDrilldown(
     params.set('cooStatus', target.value);
   } else if (target.category === 'sepStatus') {
     params.set('sepStatus', target.value);
-  } else if (target.category === 'inchargeStatus') {
-    if (target.incharge) params.set('incharge', target.incharge);
-    if (target.unitsStatus) params.set('unitsStatus', target.unitsStatus);
-    if (target.folderStatus) params.set('folderStatus', target.folderStatus);
-    if (target.metric) params.set('drillMetric', target.metric);
   }
 
   const res = await fetch(`/api/sheets/drilldown?${params.toString()}`, { headers });
