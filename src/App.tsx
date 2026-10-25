@@ -25,11 +25,22 @@ import {
 } from './lib/types';
 import { Sidebar, ActiveTab } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
-import { DirectoryView } from './components/DirectoryView';
-import { ProjectsView } from './components/ProjectsView';
-import { ConnectionView } from './components/ConnectionView';
-import { RecordDetailModal } from './components/RecordDetailModal';
-import { ManagementReportView } from './components/ManagementReportView';
+
+const ManagementReportView = React.lazy(() =>
+  import('./components/ManagementReportView').then((m) => ({ default: m.ManagementReportView }))
+);
+const DirectoryView = React.lazy(() =>
+  import('./components/DirectoryView').then((m) => ({ default: m.DirectoryView }))
+);
+const ProjectsView = React.lazy(() =>
+  import('./components/ProjectsView').then((m) => ({ default: m.ProjectsView }))
+);
+const ConnectionView = React.lazy(() =>
+  import('./components/ConnectionView').then((m) => ({ default: m.ConnectionView }))
+);
+const RecordDetailModal = React.lazy(() =>
+  import('./components/RecordDetailModal').then((m) => ({ default: m.RecordDetailModal }))
+);
 
 const initialFilters: FilterState = {
   search: '',
@@ -352,62 +363,71 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'reports' && (
-            <ManagementReportView
-              summary={summary}
-              analytics={analytics}
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onResetFilters={handleResetFilters}
-              onNavigateToDirectory={(filterUpdates) => {
-                if (filterUpdates) handleFilterChange(filterUpdates);
-                setActiveTab('directory');
-              }}
-              onSelectRecord={setSelectedRecord}
-            />
-          )}
+          <React.Suspense
+            fallback={
+              <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-slate-500">
+                <RotateCw className="w-7 h-7 text-[#2563eb] animate-spin" />
+                <span className="text-xs font-semibold uppercase tracking-wider">Loading view...</span>
+              </div>
+            }
+          >
+            {activeTab === 'reports' && (
+              <ManagementReportView
+                summary={summary}
+                analytics={analytics}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onResetFilters={handleResetFilters}
+                onNavigateToDirectory={(filterUpdates) => {
+                  if (filterUpdates) handleFilterChange(filterUpdates);
+                  setActiveTab('directory');
+                }}
+                onSelectRecord={setSelectedRecord}
+              />
+            )}
 
-          {activeTab === 'directory' && (
-            <DirectoryView
-              records={records}
-              pagination={pagination}
-              filters={filters}
-              summary={summary}
-              isLoading={isLoadingRecords}
-              onFilterChange={handleFilterChange}
-              onResetFilters={handleResetFilters}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-              onSelectRecord={setSelectedRecord}
-            />
-          )}
+            {activeTab === 'directory' && (
+              <DirectoryView
+                records={records}
+                pagination={pagination}
+                filters={filters}
+                summary={summary}
+                isLoading={isLoadingRecords}
+                onFilterChange={handleFilterChange}
+                onResetFilters={handleResetFilters}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                onSelectRecord={setSelectedRecord}
+              />
+            )}
 
-          {activeTab === 'projects' && (
-            <ProjectsView
-              summary={summary}
-              onSelectProject={handleSelectProject}
-            />
-          )}
+            {activeTab === 'projects' && (
+              <ProjectsView
+                summary={summary}
+                onSelectProject={handleSelectProject}
+              />
+            )}
 
-          {activeTab === 'settings' && (
-            <ConnectionView
-              status={connectionStatus}
-              user={user}
-              onAuthChange={setUser}
-              isRefreshing={isRefreshing}
-              onRefresh={handleRefresh}
-            />
-          )}
+            {activeTab === 'settings' && (
+              <ConnectionView
+                status={connectionStatus}
+                user={user}
+                onAuthChange={setUser}
+                isRefreshing={isRefreshing}
+                onRefresh={handleRefresh}
+              />
+            )}
+
+            {/* Record Details Slide-over Drawer / Modal */}
+            {selectedRecord && (
+              <RecordDetailModal
+                record={selectedRecord}
+                onClose={() => setSelectedRecord(null)}
+              />
+            )}
+          </React.Suspense>
         </main>
       </div>
-
-      {/* Record Details Slide-over Drawer / Modal */}
-      {selectedRecord && (
-        <RecordDetailModal
-          record={selectedRecord}
-          onClose={() => setSelectedRecord(null)}
-        />
-      )}
     </div>
   );
 }
