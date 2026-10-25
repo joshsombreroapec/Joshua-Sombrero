@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
@@ -310,9 +311,16 @@ async function ensureCache(authToken?: string, force = false): Promise<SheetReco
   }
 }
 
-async function startServer() {
-  const app = express();
-  app.use(express.json());
+export const app = express();
+app.use(express.json());
+
+// Normalization middleware in case Vercel rewrites strip /api prefix
+app.use((req, res, next) => {
+  if (req.url.startsWith('/sheets')) {
+    req.url = '/api' + req.url;
+  }
+  next();
+});
 
   // Background warm-up
   ensureCache().catch((err) => {
@@ -1764,6 +1772,10 @@ async function startServer() {
     }
   });
 
+export default app;
+
+// Standalone server lifecycle (used for local development and non-serverless Node hosting)
+export async function startStandaloneServer() {
   // Mount Vite or Static Files
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
@@ -1794,7 +1806,10 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+// Only start standalone server when run directly (not in Vercel serverless environment)
+if (!process.env.VERCEL) {
+  startStandaloneServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
