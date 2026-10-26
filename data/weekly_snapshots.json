@@ -1,1 +1,484 @@
-{}
+{
+  "updatedAt": "2026-10-26T05:08:30.101Z",
+  "timezone": "Asia/Manila",
+  "snapshots": {
+    "2026-07-27_2026-08-02": {
+      "weekKey": "2026-07-27_2026-08-02",
+      "label": "Jul 27–Aug 2",
+      "fullLabel": "Jul 27–Aug 2, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 6611,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 1111,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 1185,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 1773,
+          "NYS- 6.121 DAYS+": 41,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 1114,
+          "ENERGIZED- 6.121 DAYS+": 3244,
+          "ONGOING- 4.BETWEEN 61-90 DAYS": 152,
+          "ONGOING- 5.BETWEEN 91-120 DAYS": 69,
+          "ONGOING- 6.121 DAYS+": 336
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 844,
+          "AZALEA VISTA 2": 576,
+          "BRENTWOOD RESIDENCES": 213,
+          "BRENTWOOD RESIDENCES PH2": 1257,
+          "CASA CATRINA": 98,
+          "CASA ISABEL": 823,
+          "CASA ISABEL EXTENSION": 565,
+          "CHARLESTON PLACE": 14,
+          "CITADEL RESIDENCES": 168,
+          "CITADEL RESIDENCES 2": 861,
+          "CITADEL RESIDENCES 3": 605,
+          "CASA SEGOVIA": 193,
+          "FILMORE PLACE": 603,
+          "GRANDVIEW HEIGHTS 2": 1319,
+          "LA JOLLA": 785,
+          "MONTANA HEIGHTS": 539,
+          "MOSAIC TOWNHOMES": 365,
+          "PALMDALE VILLAGE": 1067,
+          "PARAGON VILLAGE": 1036,
+          "SAFFRON HILLS": 293,
+          "SAFFRON HILLS 2": 231,
+          "SONOMA RESIDENCES 2": 875,
+          "SONOMA RESIDENCES 3": 67,
+          "SONOMA RESIDENCES 4": 261,
+          "VILLA DE CHARLOTTE": 988,
+          "VERDANZA HOMES": 179,
+          "VILLA MARCELA": 563,
+          "VILLA MARCELA 3": 296,
+          "ZEN TOWNHOMES": 127
+        }
+      }
+    },
+    "2026-08-03_2026-08-09": {
+      "weekKey": "2026-08-03_2026-08-09",
+      "label": "Aug 3–9",
+      "fullLabel": "Aug 3–9, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 16,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 6,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 8,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 1,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 1,
+          "ENERGIZED- 6.121 DAYS+": 61,
+          "ONGOING- 4.BETWEEN 61-90 DAYS": 30,
+          "ONGOING- 3.BETWEEN 41-60 DAYS": 9
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 1,
+          "AZALEA VISTA 2": 8,
+          "BRENTWOOD RESIDENCES": 2,
+          "BRENTWOOD RESIDENCES PH2": 3,
+          "CASA CATRINA": 4,
+          "CASA ISABEL": 1,
+          "CHARLESTON PLACE": 20,
+          "CITADEL RESIDENCES 2": 1,
+          "CITADEL RESIDENCES 3": 9,
+          "CASA SEGOVIA": 2,
+          "FILMORE PLACE": 3,
+          "GRANDVIEW HEIGHTS 2": 1,
+          "LA JOLLA": 1,
+          "MOSAIC TOWNHOMES": 1,
+          "PALMDALE VILLAGE": 21,
+          "PARAGON VILLAGE": 1,
+          "SAFFRON HILLS 2": 1,
+          "SONOMA RESIDENCES 2": 23,
+          "VILLA DE CHARLOTTE": 7,
+          "VILLA MARCELA 3": 2,
+          "ZEN TOWNHOMES": 3
+        }
+      }
+    },
+    "2026-08-10_2026-08-16": {
+      "weekKey": "2026-08-10_2026-08-16",
+      "label": "Aug 10–16",
+      "fullLabel": "Aug 10–16, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 70,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 17,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 11,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 4,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 2,
+          "ENERGIZED- 6.121 DAYS+": 53,
+          "ONGOING- 3.BETWEEN 41-60 DAYS": 47
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 2,
+          "AZALEA VISTA 2": 11,
+          "BRENTWOOD RESIDENCES": 1,
+          "BRENTWOOD RESIDENCES PH2": 2,
+          "CASA CATRINA": 5,
+          "CASA ISABEL": 1,
+          "CHARLESTON PLACE": 8,
+          "CITADEL RESIDENCES 3": 12,
+          "CASA SEGOVIA": 2,
+          "FILMORE PLACE": 12,
+          "GRANDVIEW HEIGHTS 2": 1,
+          "PALMDALE VILLAGE": 28,
+          "SONOMA RESIDENCES 2": 21,
+          "VILLA DE CHARLOTTE": 1,
+          "VILLA MARCELA 3": 4,
+          "ZEN TOWNHOMES": 4
+        }
+      }
+    },
+    "2026-08-17_2026-08-23": {
+      "weekKey": "2026-08-17_2026-08-23",
+      "label": "Aug 17–23",
+      "fullLabel": "Aug 17–23, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 18,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 2,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 3,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 4,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 6,
+          "ENERGIZED- 6.121 DAYS+": 16,
+          "ONGOING- 3.BETWEEN 41-60 DAYS": 35
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 1,
+          "AZALEA VISTA 2": 10,
+          "BRENTWOOD RESIDENCES": 4,
+          "BRENTWOOD RESIDENCES PH2": 3,
+          "CASA CATRINA": 2,
+          "CHARLESTON PLACE": 14,
+          "CITADEL RESIDENCES 2": 1,
+          "CITADEL RESIDENCES 3": 12,
+          "CASA SEGOVIA": 1,
+          "FILMORE PLACE": 4,
+          "GRANDVIEW HEIGHTS 2": 1,
+          "LA JOLLA": 1,
+          "PALMDALE VILLAGE": 16,
+          "SAFFRON HILLS 2": 1,
+          "SONOMA RESIDENCES 2": 9,
+          "VILLA DE CHARLOTTE": 2,
+          "ZEN TOWNHOMES": 3
+        }
+      }
+    },
+    "2026-08-24_2026-08-30": {
+      "weekKey": "2026-08-24_2026-08-30",
+      "label": "Aug 24–30",
+      "fullLabel": "Aug 24–30, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 23,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 20,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 8,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 22,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 3,
+          "ENERGIZED- 6.121 DAYS+": 107,
+          "ONGOING- 3.BETWEEN 41-60 DAYS": 20,
+          "ONGOING- 2.BETWEEN 22-40 DAYS": 32
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 1,
+          "AZALEA VISTA 2": 4,
+          "BRENTWOOD RESIDENCES PH2": 1,
+          "CASA CATRINA": 10,
+          "CHARLESTON PLACE": 10,
+          "CITADEL RESIDENCES 3": 13,
+          "CASA SEGOVIA": 2,
+          "FILMORE PLACE": 1,
+          "GRANDVIEW HEIGHTS 2": 3,
+          "LA JOLLA": 1,
+          "MONTANA HEIGHTS": 1,
+          "MOSAIC TOWNHOMES": 2,
+          "PALMDALE VILLAGE": 34,
+          "PARAGON VILLAGE": 1,
+          "SONOMA RESIDENCES 2": 12,
+          "VILLA DE CHARLOTTE": 6,
+          "VILLA MARCELA": 1,
+          "VILLA MARCELA 3": 1,
+          "ZEN TOWNHOMES": 1
+        }
+      }
+    },
+    "2026-08-31_2026-09-06": {
+      "weekKey": "2026-08-31_2026-09-06",
+      "label": "Aug 31–Sep 6",
+      "fullLabel": "Aug 31–Sep 6, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 16,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 7,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 7,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 12,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 3,
+          "ENERGIZED- 6.121 DAYS+": 40,
+          "ONGOING- 2.BETWEEN 22-40 DAYS": 32
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 2,
+          "AZALEA VISTA 2": 1,
+          "BRENTWOOD RESIDENCES": 4,
+          "CASA CATRINA": 3,
+          "CHARLESTON PLACE": 12,
+          "CITADEL RESIDENCES 3": 1,
+          "CASA SEGOVIA": 2,
+          "FILMORE PLACE": 3,
+          "GRANDVIEW HEIGHTS 2": 2,
+          "PALMDALE VILLAGE": 16,
+          "PARAGON VILLAGE": 1,
+          "SONOMA RESIDENCES 2": 11,
+          "VILLA DE CHARLOTTE": 3,
+          "VERDANZA HOMES": 1,
+          "VILLA MARCELA 3": 1,
+          "ZEN TOWNHOMES": 2
+        }
+      }
+    },
+    "2026-09-07_2026-09-13": {
+      "weekKey": "2026-09-07_2026-09-13",
+      "label": "Sep 7–13",
+      "fullLabel": "Sep 7–13, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 13,
+          "ONGOING- 2.BETWEEN 22-40 DAYS": 37
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 3,
+          "AZALEA VISTA 2": 6,
+          "BRENTWOOD RESIDENCES": 3,
+          "BRENTWOOD RESIDENCES PH2": 2,
+          "CASA CATRINA": 2,
+          "CASA ISABEL": 1,
+          "CASA ISABEL EXTENSION": 1,
+          "CHARLESTON PLACE": 15,
+          "CITADEL RESIDENCES 3": 9,
+          "CASA SEGOVIA": 2,
+          "FILMORE PLACE": 5,
+          "PALMDALE VILLAGE": 15,
+          "PARAGON VILLAGE": 2,
+          "SONOMA RESIDENCES 2": 4,
+          "SONOMA RESIDENCES 4": 1,
+          "VILLA DE CHARLOTTE": 7,
+          "VILLA MARCELA": 1,
+          "ZEN TOWNHOMES": 4
+        }
+      }
+    },
+    "2026-09-14_2026-09-20": {
+      "weekKey": "2026-09-14_2026-09-20",
+      "label": "Sep 14–20",
+      "fullLabel": "Sep 14–20, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 6.121 DAYS+": 47,
+          "ONGOING- 1.WITHIN 21 DAYS": 31
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 3,
+          "AZALEA VISTA 2": 10,
+          "BRENTWOOD RESIDENCES": 6,
+          "BRENTWOOD RESIDENCES PH2": 5,
+          "CHARLESTON PLACE": 18,
+          "FILMORE PLACE": 6,
+          "GRANDVIEW HEIGHTS 2": 1,
+          "MOSAIC TOWNHOMES": 3,
+          "PALMDALE VILLAGE": 2,
+          "PARAGON VILLAGE": 3,
+          "SONOMA RESIDENCES 2": 6,
+          "VILLA DE CHARLOTTE": 6,
+          "VILLA MARCELA 3": 1,
+          "ZEN TOWNHOMES": 2
+        }
+      }
+    },
+    "2026-09-21_2026-09-27": {
+      "weekKey": "2026-09-21_2026-09-27",
+      "label": "Sep 21–27",
+      "fullLabel": "Sep 21–27, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 15,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 15,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 14,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 17,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 21,
+          "ENERGIZED- 6.121 DAYS+": 70,
+          "ONGOING- 1.WITHIN 21 DAYS": 58
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 3,
+          "AZALEA VISTA 2": 8,
+          "BRENTWOOD RESIDENCES": 2,
+          "BRENTWOOD RESIDENCES PH2": 1,
+          "CASA CATRINA": 10,
+          "CASA ISABEL EXTENSION": 5,
+          "CHARLESTON PLACE": 11,
+          "CITADEL RESIDENCES": 1,
+          "CASA SEGOVIA": 1,
+          "FILMORE PLACE": 9,
+          "GRANDVIEW HEIGHTS 2": 1,
+          "MONTANA HEIGHTS": 1,
+          "MOSAIC TOWNHOMES": 2,
+          "PALMDALE VILLAGE": 14,
+          "SONOMA RESIDENCES 2": 23,
+          "VILLA DE CHARLOTTE": 6,
+          "VERDANZA HOMES": 1,
+          "VILLA MARCELA 3": 3,
+          "ZEN TOWNHOMES": 2
+        }
+      }
+    },
+    "2026-09-28_2026-10-04": {
+      "weekKey": "2026-09-28_2026-10-04",
+      "label": "Sep 28–Oct 4",
+      "fullLabel": "Sep 28–Oct 4, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 64,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 37,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 33,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 42,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 22,
+          "ENERGIZED- 6.121 DAYS+": 216,
+          "ONGOING- 1.WITHIN 21 DAYS": 64
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 2,
+          "AZALEA VISTA 2": 13,
+          "BRENTWOOD RESIDENCES PH2": 2,
+          "CASA CATRINA": 5,
+          "CASA ISABEL EXTENSION": 1,
+          "CHARLESTON PLACE": 14,
+          "CITADEL RESIDENCES 2": 5,
+          "CITADEL RESIDENCES 3": 9,
+          "CASA SEGOVIA": 3,
+          "FILMORE PLACE": 3,
+          "LA JOLLA": 2,
+          "MONTANA HEIGHTS": 1,
+          "MOSAIC TOWNHOMES": 2,
+          "PALMDALE VILLAGE": 27,
+          "PARAGON VILLAGE": 2,
+          "SONOMA RESIDENCES 2": 2,
+          "VILLA DE CHARLOTTE": 1,
+          "ZEN TOWNHOMES": 2
+        }
+      }
+    },
+    "2026-10-05_2026-10-11": {
+      "weekKey": "2026-10-05_2026-10-11",
+      "label": "Oct 5–11",
+      "fullLabel": "Oct 5–11, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 18,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 11,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 20,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 20,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 26,
+          "ENERGIZED- 6.121 DAYS+": 59,
+          "ONGOING- 1.WITHIN 21 DAYS": 51
+        }
+      },
+      "takeoutByFilter": {
+        "global": {
+          "ALPINE RESIDENCES": 1,
+          "AZALEA VISTA 2": 19,
+          "CASA CATRINA": 5,
+          "CASA ISABEL": 1,
+          "CHARLESTON PLACE": 7,
+          "CITADEL RESIDENCES 3": 6,
+          "CASA SEGOVIA": 2,
+          "FILMORE PLACE": 2,
+          "MOSAIC TOWNHOMES": 3,
+          "PALMDALE VILLAGE": 8,
+          "PARAGON VILLAGE": 4,
+          "SONOMA RESIDENCES 2": 7,
+          "VILLA DE CHARLOTTE": 3,
+          "ZEN TOWNHOMES": 3
+        }
+      }
+    },
+    "2026-10-12_2026-10-18": {
+      "weekKey": "2026-10-12_2026-10-18",
+      "label": "Oct 12–18",
+      "fullLabel": "Oct 12–18, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 18,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 7,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 21,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 26,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 8,
+          "ENERGIZED- 6.121 DAYS+": 11
+        }
+      },
+      "takeoutByFilter": {
+        "global": {}
+      }
+    },
+    "2026-10-19_2026-10-25": {
+      "weekKey": "2026-10-19_2026-10-25",
+      "label": "Oct 19–25",
+      "fullLabel": "Oct 19–25, 2026",
+      "status": "FINAL",
+      "frozenAt": "2026-10-26T05:08:30.100Z",
+      "kpiByFilter": {
+        "global": {
+          "ENERGIZED- 1.WITHIN 21 DAYS": 3,
+          "ENERGIZED- 2.BETWEEN 22-40 DAYS": 1,
+          "ENERGIZED- 3.BETWEEN 41-60 DAYS": 2,
+          "ENERGIZED- 4.BETWEEN 61-90 DAYS": 9,
+          "ENERGIZED- 5.BETWEEN 91-120 DAYS": 4,
+          "ENERGIZED- 6.121 DAYS+": 17
+        }
+      },
+      "takeoutByFilter": {
+        "global": {}
+      }
+    }
+  }
+}

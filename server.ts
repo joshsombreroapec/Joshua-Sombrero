@@ -1097,7 +1097,11 @@ app.use((req, res, next) => {
   }
 
   function calculateWeeklyMatrix(records: SheetRecord[], query: any) {
-    const currentWeekInfo = getWeekRangeMondayToSunday('2026-10-24')!;
+    // Dynamic Present Week calculation in Asia/Manila (UTC+8)
+    const now = new Date();
+    const manilaNow = new Date(now.getTime() + 8 * 3600 * 1000);
+    const manilaIsoToday = manilaNow.toISOString().split('T')[0];
+    const currentWeekInfo = getWeekRangeMondayToSunday(manilaIsoToday)!;
     const currentWeekKey = currentWeekInfo.weekKey;
     const baselineWeekInfo = getWeekRangeMondayToSunday('2026-07-27')!;
     const baselineWeekKey = baselineWeekInfo.weekKey; // '2026-07-27_2026-08-02'
@@ -1153,7 +1157,7 @@ app.use((req, res, next) => {
 
     // Pre-populate all weekly columns starting from baseline "Jul 27-Aug 2" to current week
     let currentIter = new Date('2026-07-27T00:00:00Z');
-    const endIter = new Date('2026-10-25T23:59:59Z');
+    const endIter = new Date(`${currentWeekInfo.sunStr}T23:59:59Z`);
     while (currentIter.getTime() <= endIter.getTime()) {
       const iterStr = currentIter.toISOString().split('T')[0];
       const wInfo = getWeekRangeMondayToSunday(iterStr);
@@ -1256,17 +1260,18 @@ app.use((req, res, next) => {
 
     let sortedWeeks = Array.from(weekMap.values()).sort((a, b) => a.monTime - b.monTime);
 
+    const currentTimestamp = currentWeekInfo.sunTime;
     if (datePreset === '30d') {
-      const cutoff = new Date('2026-10-24').getTime() - 30 * 86400000;
+      const cutoff = currentTimestamp - 30 * 86400000;
       sortedWeeks = sortedWeeks.filter((w) => w.sunTime >= cutoff);
     } else if (datePreset === '60d') {
-      const cutoff = new Date('2026-10-24').getTime() - 60 * 86400000;
+      const cutoff = currentTimestamp - 60 * 86400000;
       sortedWeeks = sortedWeeks.filter((w) => w.sunTime >= cutoff);
     } else if (datePreset === '90d') {
-      const cutoff = new Date('2026-10-24').getTime() - 90 * 86400000;
+      const cutoff = currentTimestamp - 90 * 86400000;
       sortedWeeks = sortedWeeks.filter((w) => w.sunTime >= cutoff);
     } else if (datePreset === '180d') {
-      const cutoff = new Date('2026-10-24').getTime() - 180 * 86400000;
+      const cutoff = currentTimestamp - 180 * 86400000;
       sortedWeeks = sortedWeeks.filter((w) => w.sunTime >= cutoff);
     }
 
@@ -1278,27 +1283,98 @@ app.use((req, res, next) => {
       });
     }
 
-    // Direct dynamic weekly counts calculation (snapshot rule removed)
+    // Freeze & Finalize Past Ended Weeks / Keep Present Week LIVE
+    const snapshots = loadWeeklySnapshots();
+    let hasNewSnapshots = false;
+
+    const filterKey = (query.project || query.incharge || query.area || query.unitsStatus || query.folderStatus)
+      ? `${query.project || ''}__${query.incharge || ''}__${query.area || ''}__${query.unitsStatus || ''}__${query.folderStatus || ''}`
+      : 'global';
+
+    sortedWeeks.forEach((w) => {
+      const isPastEndedWeek = !w.isLive && w.weekKey !== currentWeekKey;
+
+      if (isPastEndedWeek) {
+        if (!snapshots[w.weekKey]) {
+          snapshots[w.weekKey] = {
+            weekKey: w.weekKey,
+            label: w.label,
+            fullLabel: w.fullLabel,
+            status: 'FINAL',
+            frozenAt: new Date().toISOString(),
+            kpiByFilter: {},
+            takeoutByFilter: {},
+          };
+        }
+        if (!snapshots[w.weekKey].kpiByFilter) {
+          snapshots[w.weekKey].kpiByFilter = {};
+        }
+        if (!snapshots[w.weekKey].takeoutByFilter) {
+          snapshots[w.weekKey].takeoutByFilter = {};
+        }
+
+        // Freeze if not already snapshotted for this filter configuration
+        if (!snapshots[w.weekKey].kpiByFilter[filterKey]) {
+          const weekKpi: Record<string, number> = {};
+          liveKpiCounts.forEach((counts, kpi) => {
+            const c = counts.get(w.weekKey) || 0;
+            if (c > 0) weekKpi[kpi] = c;
+          });
+          snapshots[w.weekKey].kpiByFilter[filterKey] = weekKpi;
+          hasNewSnapshots = true;
+        }
+
+        if (!snapshots[w.weekKey].takeoutByFilter[filterKey]) {
+          const weekTakeout: Record<string, number> = {};
+          liveTakeoutCounts.forEach((counts, proj) => {
+            const c = counts.get(w.weekKey) || 0;
+            if (c > 0) weekTakeout[proj] = c;
+          });
+          snapshots[w.weekKey].takeoutByFilter[filterKey] = weekTakeout;
+          hasNewSnapshots = true;
+        }
+      }
+    });
+
+    if (hasNewSnapshots) {
+      saveWeeklySnapshots(snapshots);
+    }
+
+    const sortedKpiRemarks = Array.from(kpiRemarksSet).sort((a, b) => a.localeCompare(b));
     const finalizedKpiCounts = new Map<string, Record<string, number>>();
     const finalizedTakeoutCounts = new Map<string, Record<string, number>>();
 
     sortedWeeks.forEach((w) => {
+      const isPastEndedWeek = !w.isLive && w.weekKey !== currentWeekKey;
       const weekKpi: Record<string, number> = {};
-      liveKpiCounts.forEach((counts, kpi) => {
-        weekKpi[kpi] = counts.get(w.weekKey) || 0;
-      });
-      finalizedKpiCounts.set(w.weekKey, weekKpi);
-
       const weekTakeout: Record<string, number> = {};
-      liveTakeoutCounts.forEach((counts, proj) => {
-        weekTakeout[proj] = counts.get(w.weekKey) || 0;
-      });
+
+      if (isPastEndedWeek && snapshots[w.weekKey]?.kpiByFilter?.[filterKey]) {
+        // FROZEN & FINAL: Use permanently locked snapshot data for ended week
+        const frozenKpi = snapshots[w.weekKey].kpiByFilter[filterKey];
+        sortedKpiRemarks.forEach((kpi) => {
+          weekKpi[kpi] = frozenKpi[kpi] || 0;
+        });
+
+        const frozenTakeout = snapshots[w.weekKey].takeoutByFilter?.[filterKey] || {};
+        projectsSet.forEach((proj) => {
+          weekTakeout[proj] = frozenTakeout[proj] || 0;
+        });
+      } else {
+        // PRESENT WEEK: LIVE and dynamic from real-time incoming Google Sheet data
+        liveKpiCounts.forEach((counts, kpi) => {
+          weekKpi[kpi] = counts.get(w.weekKey) || 0;
+        });
+        liveTakeoutCounts.forEach((counts, proj) => {
+          weekTakeout[proj] = counts.get(w.weekKey) || 0;
+        });
+      }
+
+      finalizedKpiCounts.set(w.weekKey, weekKpi);
       finalizedTakeoutCounts.set(w.weekKey, weekTakeout);
     });
 
-    const sortedKpiRemarks = Array.from(kpiRemarksSet).sort((a, b) => a.localeCompare(b));
-
-    // 5. Dynamic Cumulative KPI Matrix calculation across reporting weeks (no snapshot freezing)
+    // 5. Cumulative KPI Matrix calculation across reporting weeks
     let runningCumulative: Record<string, number> = {};
     let runningGrandTotal = 0;
 

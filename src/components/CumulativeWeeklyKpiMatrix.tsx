@@ -122,7 +122,10 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
             </span>
             <span className="px-2.5 py-0.5 text-xs font-bold bg-emerald-600 text-white rounded-md flex items-center gap-1.5 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              LIVE CURRENT WEEK
+              LIVE PRESENT WEEK
+            </span>
+            <span className="px-2 py-0.5 text-xs font-bold bg-slate-800 text-slate-200 border border-slate-700 rounded-md">
+              PAST WEEKS FROZEN & FINAL
             </span>
             <span className="px-2 py-0.5 text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300 rounded-md">
               Timezone: Asia/Manila (UTC+8)
@@ -132,7 +135,7 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
             <span>Weekly Periods: Monday through Sunday</span>
             <span>•</span>
             <span className="text-[#475569]">
-              Cumulative progressive running counts per KPI Remark across reporting periods. Click any KPI remark to drill down.
+              Present Week is LIVE (in-progress updates); ended past weeks are Frozen & Final. Click any KPI remark to drill down.
             </span>
           </p>
         </div>
@@ -177,18 +180,19 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
                     <th
                       key={week.weekKey}
                       className={`px-2 sm:px-3 py-2 sm:py-3 text-center font-bold tracking-tight min-w-[85px] sm:min-w-[110px] border-l border-white/10 ${
-                        week.isLive ? 'bg-emerald-950/90 text-emerald-200' : ''
+                        week.isLive ? 'bg-emerald-950/90 text-emerald-200 ring-2 ring-emerald-500/40' : ''
                       }`}
                     >
                       <div className="flex flex-col items-center">
                         <span className="font-extrabold text-[11px] sm:text-xs whitespace-nowrap">{week.label}</span>
                         <div className="mt-0.5 sm:mt-1 flex items-center gap-1">
                           {week.isLive ? (
-                            <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-white font-mono text-[8px] sm:text-[9px] font-black uppercase tracking-wider animate-pulse">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500 text-white font-mono text-[9px] font-black uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                               LIVE
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.2 rounded bg-white/10 text-slate-300 font-mono text-[8px] sm:text-[9px] font-semibold uppercase">
+                            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[8px] sm:text-[9px] font-semibold uppercase border border-slate-700">
                               FINAL
                             </span>
                           )}
@@ -319,7 +323,12 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
             {hoveredCell.kpi}
           </div>
           <div className="text-[11px] text-slate-300 mt-0.5">
-            {hoveredCell.fullDate} ({hoveredCell.status})
+            {hoveredCell.fullDate} •{' '}
+            {hoveredCell.status === 'LIVE' ? (
+              <span className="text-emerald-400 font-bold">LIVE (Present Week)</span>
+            ) : (
+              <span className="text-slate-400 font-semibold">FROZEN & FINAL (Closed Week)</span>
+            )}
           </div>
           <div className="mt-1 pt-1 border-t border-slate-700 font-mono text-emerald-400 font-extrabold flex items-center justify-between gap-3">
             <span>Cumulative Total:</span>
