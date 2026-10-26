@@ -11,37 +11,7 @@ const __dirname = path.dirname(__filename);
 
 const SPREADSHEET_ID = '1ejSR8lencQKuBu60ozZ99yIrP2OBU91-PmkawRNz8FM';
 const SHEET_NAME = 'DATA';
-
-function getServerConfig() {
-  const args = process.argv.slice(2);
-  let port = 3000;
-  let host = '0.0.0.0';
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--port' && args[i + 1]) {
-      const p = parseInt(args[i + 1], 10);
-      if (!isNaN(p)) port = p;
-      i++;
-    } else if (args[i].startsWith('--port=')) {
-      const p = parseInt(args[i].split('=')[1], 10);
-      if (!isNaN(p)) port = p;
-    } else if (args[i] === '--host' && args[i + 1]) {
-      host = args[i + 1];
-      i++;
-    } else if (args[i].startsWith('--host=')) {
-      host = args[i].split('=')[1];
-    }
-  }
-
-  // In AI Studio, dev server must bind to port 3000.
-  // process.env.PORT is often 8080 (reserved for container proxy), so only use APP_PORT if explicitly defined.
-  if (process.env.APP_PORT) {
-    const p = parseInt(process.env.APP_PORT, 10);
-    if (!isNaN(p)) port = p;
-  }
-
-  return { port, host };
-}
+const PORT = process.env.PORT || 3000;
 
 export interface SheetRecord {
   id: number;
@@ -425,6 +395,11 @@ app.use((req, res, next) => {
     return isNaN(d.getTime()) ? null : d;
   };
 
+  const isEnergizedWithin21Days = (kpiRemarks: string): boolean => {
+    const k = (kpiRemarks || '').trim().toUpperCase();
+    return k.includes('ENERGIZED') && k.includes('WITHIN 21') && !k.includes('121');
+  };
+
   function filterRecords(records: SheetRecord[], query: any): SheetRecord[] {
     const search = ((query.search as string) || '').toLowerCase().trim();
     const unitsStatus = ((query.unitsStatus as string) || '').trim();
@@ -526,7 +501,7 @@ app.use((req, res, next) => {
       } else if (m === 'priority') {
         filtered = filtered.filter((r) => (r.priorityMoveIn || '').toUpperCase().includes('PRIORITY'));
       } else if (m === 'within21days') {
-        filtered = filtered.filter((r) => (r.kpiRemarks || '').toUpperCase().includes('21 DAYS'));
+        filtered = filtered.filter((r) => isEnergizedWithin21Days(r.kpiRemarks));
       }
     }
 
@@ -541,7 +516,7 @@ app.use((req, res, next) => {
           return (
             d &&
             `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === month &&
-            (r.kpiRemarks || '').toUpperCase().includes('21 DAYS')
+            isEnergizedWithin21Days(r.kpiRemarks)
           );
         } else {
           const d = parseDateObj(r.energizedDate);
@@ -626,7 +601,7 @@ app.use((req, res, next) => {
         if (isPriority) priorityCount++;
 
         const kpi = (r.kpiRemarks || '').trim();
-        if (kpi.toUpperCase().includes('21 DAYS')) within21DaysCount++;
+        if (isEnergizedWithin21Days(r.kpiRemarks)) within21DaysCount++;
 
         // Categorical breakdowns
         if (kpi) {
@@ -662,7 +637,7 @@ app.use((req, res, next) => {
           monthlyEnergizedMap[mKey] = (monthlyEnergizedMap[mKey] || 0) + 1;
           monthKeysSet.add(mKey);
 
-          if (kpi.toUpperCase().includes('21 DAYS')) {
+          if (isEnergizedWithin21Days(r.kpiRemarks)) {
             monthlyWithin21Map[mKey] = (monthlyWithin21Map[mKey] || 0) + 1;
           }
         }
@@ -789,7 +764,7 @@ app.use((req, res, next) => {
         const k = (r.kpiRemarks || '').toUpperCase();
 
         // 1. Within 21 Days
-        if ((u.includes('ENERGIZED') || k.includes('ENERGIZED')) && k.includes('21 DAYS')) {
+        if (isEnergizedWithin21Days(r.kpiRemarks)) {
           if (!within21ProjectsMap[projName]) {
             within21ProjectsMap[projName] = { count: 0, totalEnergized: 0 };
           }
@@ -929,7 +904,7 @@ app.use((req, res, next) => {
           const t = (r.takeoutDate || '').trim();
 
           const isTaken = f.includes('TAKEN OUT') || f.includes('TAKEOUT') || (t !== '' && t !== '-' && t !== '#N/A');
-          const isWithin21 = (u.includes('ENERGIZED') || k.includes('ENERGIZED')) && k.includes('21 DAYS');
+          const isWithin21 = isEnergizedWithin21Days(r.kpiRemarks);
           const isEnergized = u.includes('ENERGIZED');
           const isOngoing = u.includes('ONGOING');
           const isNys = u.includes('NYS') || u.includes('NOT YET STARTED');
@@ -1806,16 +1781,11 @@ export default app;
 
 // Standalone server lifecycle (used for local development and non-serverless Node hosting)
 export async function startStandaloneServer() {
-  const { port, host } = getServerConfig();
-
   // Mount Vite or Static Files
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: false,
-      },
+      server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -1836,8 +1806,8 @@ export async function startStandaloneServer() {
     }
   }, 60 * 1000);
 
-  app.listen(port, host, () => {
-    console.log(`Server listening on http://${host}:${port}`);
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
   });
 }
 

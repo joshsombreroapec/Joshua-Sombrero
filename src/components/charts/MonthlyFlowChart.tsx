@@ -121,10 +121,10 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             <span className="w-4 h-1 bg-[#059669] rounded-full inline-block"></span>
             <span className="font-extrabold">Energized</span>
           </div>
-          {/* Within 21 Days: Sky Blue */}
+          {/* ENERGIZED- 1.WITHIN 21 DAYS: Sky Blue */}
           <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-sky-100 text-sky-800 border border-sky-300">
             <span className="w-4 h-1 bg-[#0284c7] rounded-full inline-block"></span>
-            <span className="font-extrabold">Within 21 Days</span>
+            <span className="font-extrabold">ENERGIZED- 1.WITHIN 21 DAYS</span>
           </div>
         </div>
       </div>
@@ -400,7 +400,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             </span>
           </div>
           <div className="flex items-center justify-between gap-6">
-            <span className="text-slate-300 font-semibold">Within 21 Days:</span>
+            <span className="text-slate-300 font-semibold">ENERGIZED- 1.WITHIN 21 DAYS:</span>
             <span className="font-mono font-bold text-sky-300 text-sm">
               {activeItem.within21Days.toLocaleString()}
             </span>

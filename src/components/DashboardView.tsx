@@ -565,13 +565,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="p-6 rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
         <MonthlyFlowChart
           data={analytics.monthlyTrend}
-          title="Monthly Flow: Taken Out vs. Energized vs. Within 21 Days"
+          title="Monthly Flow: Taken Out vs. Energized vs. ENERGIZED- 1.WITHIN 21 DAYS"
           onPointClick={(item, metric) => {
             const metricLabel =
               metric === 'takenOut'
                 ? 'Taken Out'
                 : metric === 'within21Days'
-                ? 'Within 21 Days'
+                ? 'ENERGIZED- 1.WITHIN 21 DAYS'
                 : 'Energized';
             handleOpenDrilldown({
               category: 'monthlyTrend',
@@ -693,17 +693,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         data={analytics.inchargeStatusBreakdown}
         onBarClick={(person, category) => {
           let statusFilter = '';
-          if (category === 'ENERGIZED' || category === 'ENERGIZED - 1. WITHIN 21 DAYS') {
+          let folderFilter = '';
+          let drillMetric = '';
+
+          if (category === 'ENERGIZED') {
             statusFilter = 'ENERGIZED';
+          } else if (category === 'ENERGIZED - 1. WITHIN 21 DAYS') {
+            drillMetric = 'within21days';
           } else if (category === 'ONGOING') {
             statusFilter = 'ONGOING';
           } else if (category === 'NYS') {
             statusFilter = 'NYS';
+          } else if (category === 'TAKEN OUT') {
+            drillMetric = 'takenout';
+            folderFilter = 'TAKEN OUT';
           }
-          onFilterChange({
+
+          // Open visual drilldown directly without modifying the global page filters
+          handleOpenDrilldown({
+            category: 'inchargeStatus',
+            value: `${person} - ${category}`,
+            label: `${person}: ${category}`,
             incharge: person,
             ...(statusFilter ? { unitsStatus: statusFilter } : {}),
-            ...(category === 'TAKEN OUT' ? { folderStatus: 'TAKEN OUT' } : {}),
+            ...(folderFilter ? { folderStatus: folderFilter } : {}),
+            ...(drillMetric ? { metric: drillMetric } : {}),
           });
         }}
       />

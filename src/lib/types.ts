@@ -164,11 +164,15 @@ export interface DrilldownTarget {
     | 'verticalComparison'
     | 'facStatus'
     | 'cooStatus'
-    | 'sepStatus';
+    | 'sepStatus'
+    | 'inchargeStatus';
   value: string;
   label: string;
   metric?: string;
   month?: string;
+  incharge?: string;
+  unitsStatus?: string;
+  folderStatus?: string;
 }
 
 export interface DrilldownData {

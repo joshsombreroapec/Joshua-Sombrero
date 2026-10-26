@@ -117,19 +117,19 @@ export const DonutPieChart: React.FC<DonutPieChartProps> = ({
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-2">
           {activeSlice ? (
             <>
-              <span className="text-base font-extrabold text-[#1d4ed8] font-mono leading-none">
+              <span className="text-base font-extrabold text-black font-mono leading-none">
                 {activeSlice.percentage}%
               </span>
-              <span className="text-[11px] text-slate-900 dark:text-slate-100 truncate max-w-[85px] mt-1 font-extrabold">
+              <span className="text-[11px] text-black truncate max-w-[85px] mt-1 font-extrabold">
                 {activeSlice.label}
               </span>
             </>
           ) : (
             <>
-              <span className="text-base font-extrabold text-[#1E293B] font-mono leading-none">
+              <span className="text-base font-extrabold text-black font-mono leading-none">
                 100%
               </span>
-              <span className="text-[11px] text-[#334155] mt-1 font-semibold">Distribution</span>
+              <span className="text-[11px] text-black mt-1 font-bold">Distribution</span>
             </>
           )}
         </div>
@@ -147,20 +147,20 @@ export const DonutPieChart: React.FC<DonutPieChartProps> = ({
               onClick={() => onSliceClick && onSliceClick(slice.label)}
               className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors cursor-pointer ${
                 isHovered
-                  ? 'bg-blue-100/70 dark:bg-slate-800 text-[#1d4ed8] font-extrabold'
-                  : 'text-slate-900 dark:text-slate-100 hover:bg-slate-50'
+                  ? 'bg-slate-100 font-extrabold text-black'
+                  : 'text-black hover:bg-slate-50 font-medium'
               }`}
             >
               <div className="flex items-center gap-2 truncate pr-2">
                 <span
-                  className="w-3.5 h-3.5 rounded-sm shrink-0 border border-black/10"
+                  className="w-3.5 h-3.5 rounded-sm shrink-0 border border-black/20"
                   style={{ backgroundColor: slice.color }}
                 />
-                <span className="truncate font-bold text-slate-900 dark:text-slate-100 text-xs">
+                <span className="truncate font-bold text-black text-xs">
                   {slice.label}
                 </span>
               </div>
-              <span className="font-mono text-xs shrink-0 text-slate-950 dark:text-white font-extrabold">
+              <span className="font-mono text-xs shrink-0 text-black font-extrabold">
                 {slice.count.toLocaleString()} ({slice.percentage}%)
               </span>
             </div>
