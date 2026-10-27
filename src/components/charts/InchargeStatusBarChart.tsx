@@ -111,6 +111,9 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
             <h3 className="text-base sm:text-lg font-bold text-[#1E293B] tracking-tight">
               Unit Status Breakdown by In-Charge
             </h3>
+            <span className="text-xs text-[#2563EB] font-extrabold bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
+              Click bar to drill down
+            </span>
             {unmatchedCount > 0 ? (
               <button
                 onClick={() => setShowUnmatchedModal(true)}

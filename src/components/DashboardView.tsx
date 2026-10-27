@@ -565,13 +565,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="p-6 rounded-2xl bg-white border border-[#CBD5E1] shadow-xs">
         <MonthlyFlowChart
           data={analytics.monthlyTrend}
-          title="Monthly Flow: Taken Out vs. Energized vs. ENERGIZED- 1.WITHIN 21 DAYS"
+          title="Monthly Flow: Taken Out vs. Energized vs. Within 21 Days"
           onPointClick={(item, metric) => {
             const metricLabel =
               metric === 'takenOut'
                 ? 'Taken Out'
                 : metric === 'within21Days'
-                ? 'ENERGIZED- 1.WITHIN 21 DAYS'
+                ? 'Within 21 Days'
                 : 'Energized';
             handleOpenDrilldown({
               category: 'monthlyTrend',
@@ -692,32 +692,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <InchargeStatusBarChart
         data={analytics.inchargeStatusBreakdown}
         onBarClick={(person, category) => {
-          let statusFilter = '';
-          let folderFilter = '';
-          let drillMetric = '';
-
+          let metric = '';
           if (category === 'ENERGIZED') {
-            statusFilter = 'ENERGIZED';
+            metric = 'energized_other';
           } else if (category === 'ENERGIZED - 1. WITHIN 21 DAYS') {
-            drillMetric = 'within21days';
+            metric = 'within21days';
           } else if (category === 'ONGOING') {
-            statusFilter = 'ONGOING';
+            metric = 'ongoing';
           } else if (category === 'NYS') {
-            statusFilter = 'NYS';
+            metric = 'nys';
           } else if (category === 'TAKEN OUT') {
-            drillMetric = 'takenout';
-            folderFilter = 'TAKEN OUT';
+            metric = 'takenout';
           }
 
-          // Open visual drilldown directly without modifying the global page filters
           handleOpenDrilldown({
             category: 'inchargeStatus',
-            value: `${person} - ${category}`,
-            label: `${person}: ${category}`,
-            incharge: person,
-            ...(statusFilter ? { unitsStatus: statusFilter } : {}),
-            ...(folderFilter ? { folderStatus: folderFilter } : {}),
-            ...(drillMetric ? { metric: drillMetric } : {}),
+            value: person,
+            metric,
+            label: `${person} • ${category}`,
           });
         }}
       />

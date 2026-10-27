@@ -147,13 +147,13 @@ export const DonutPieChart: React.FC<DonutPieChartProps> = ({
               onClick={() => onSliceClick && onSliceClick(slice.label)}
               className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors cursor-pointer ${
                 isHovered
-                  ? 'bg-slate-100 font-extrabold text-black'
-                  : 'text-black hover:bg-slate-50 font-medium'
+                  ? 'bg-slate-100 text-black font-extrabold ring-1 ring-slate-300'
+                  : 'text-black hover:bg-slate-50'
               }`}
             >
               <div className="flex items-center gap-2 truncate pr-2">
                 <span
-                  className="w-3.5 h-3.5 rounded-sm shrink-0 border border-black/20"
+                  className="w-3.5 h-3.5 rounded-sm shrink-0 border border-black/10"
                   style={{ backgroundColor: slice.color }}
                 />
                 <span className="truncate font-bold text-black text-xs">

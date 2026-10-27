@@ -77,12 +77,15 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
       else if (target.value === 'nys') updates.unitsStatus = 'NYS';
       else if (target.value === 'takenOut') updates.folderStatus = 'TAKEN OUT';
       else if (target.value === 'priority') updates.priorityMoveIn = 'PRIORITY';
-      else if (target.value === 'within21Days') updates.search = '21 DAYS';
+      else if (target.value === 'within21Days') {
+        updates.unitsStatus = 'ENERGIZED';
+        updates.search = 'WITHIN 21 DAYS';
+      }
     } else if (target.category === 'monthlyTrend') {
       if (target.metric === 'takenOut') updates.folderStatus = 'TAKEN OUT';
       else if (target.metric === 'within21Days') {
         updates.unitsStatus = 'ENERGIZED';
-        updates.search = '21 DAYS';
+        updates.search = 'WITHIN 21 DAYS';
       } else {
         updates.unitsStatus = 'ENERGIZED';
       }
@@ -92,6 +95,16 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
       updates.search = target.value;
     } else if (target.category === 'sepStatus') {
       updates.search = target.value;
+    } else if (target.category === 'inchargeStatus') {
+      updates.incharge = target.value;
+      if (target.metric === 'energized' || target.metric === 'energized_other') updates.unitsStatus = 'ENERGIZED';
+      else if (target.metric === 'ongoing') updates.unitsStatus = 'ONGOING';
+      else if (target.metric === 'nys') updates.unitsStatus = 'NYS';
+      else if (target.metric === 'takenout') updates.folderStatus = 'TAKEN OUT';
+      else if (target.metric === 'within21days') {
+        updates.unitsStatus = 'ENERGIZED';
+        updates.search = 'WITHIN 21 DAYS';
+      }
     }
 
     onOpenInDirectory(updates);
