@@ -69,6 +69,12 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
       updates.search = target.value;
     } else if (target.category === 'project') {
       updates.project = target.value;
+      if (target.unitsStatus) {
+        updates.unitsStatus = target.unitsStatus;
+      }
+      if (target.metric === 'within21days') {
+        updates.search = 'WITHIN 21 DAYS';
+      }
     } else if (target.category === 'pwgUpdates') {
       updates.pwgUpdates = target.value;
     } else if (target.category === 'kpiCard' || target.category === 'verticalComparison') {
@@ -602,6 +608,15 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
                           <th className="py-2.5 px-3 text-white">Unit</th>
                           <th className="py-2.5 px-3 text-white">Project</th>
                           <th className="py-2.5 px-3 text-white">Status</th>
+                          {drilldown.target.category === 'facStatus' && (
+                            <th className="py-2.5 px-3 text-white">FAC Status</th>
+                          )}
+                          {drilldown.target.category === 'cooStatus' && (
+                            <th className="py-2.5 px-3 text-white">COO Status</th>
+                          )}
+                          {drilldown.target.category === 'sepStatus' && (
+                            <th className="py-2.5 px-3 text-white">SEP Status</th>
+                          )}
                           <th className="py-2.5 px-3 text-white">In Charge</th>
                           <th className="py-2.5 px-3 text-white">PWG Updates</th>
                           <th className="py-2.5 px-3 text-white">KPI Remarks</th>
@@ -631,6 +646,27 @@ export const DashboardDrilldownModal: React.FC<DashboardDrilldownModalProps> = (
                                   {r.unitsStatus}
                                 </span>
                               </td>
+                              {drilldown.target.category === 'facStatus' && (
+                                <td className="py-2.5 px-3 whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                    {r.facStatus ? (r.facStatus.endsWith('%') ? r.facStatus : `${r.facStatus}%`) : 'Unspecified'}
+                                  </span>
+                                </td>
+                              )}
+                              {drilldown.target.category === 'cooStatus' && (
+                                <td className="py-2.5 px-3 whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                    {r.cooStatus || 'Unspecified'}
+                                  </span>
+                                </td>
+                              )}
+                              {drilldown.target.category === 'sepStatus' && (
+                                <td className="py-2.5 px-3 whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                                    {r.sepStatus || 'Unspecified'}
+                                  </span>
+                                </td>
+                              )}
                               <td className="py-2.5 px-3 whitespace-nowrap font-semibold text-[#1E293B]">{r.incharge || '-'}</td>
                               <td className="py-2.5 px-3 max-w-[150px] truncate font-semibold text-[#334155]" title={r.pwgUpdates}>
                                 {r.pwgUpdates || '-'}

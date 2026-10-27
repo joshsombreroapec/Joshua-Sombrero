@@ -999,6 +999,8 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
                         category: 'project',
                         value: proj.name,
                         label: `${proj.name} - Within 21 Days Energized`,
+                        unitsStatus: 'ENERGIZED',
+                        metric: 'within21days',
                       })
                     }
                     className="p-2.5 sm:p-3 bg-slate-50 hover:bg-blue-50/50 rounded-xl border border-[#CBD5E1] hover:border-blue-300 transition-all cursor-pointer flex items-center justify-between gap-2.5 sm:gap-3 group"
@@ -1089,6 +1091,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
                         category: 'project',
                         value: proj.name,
                         label: `${proj.name} - Critical Ongoing Delayed`,
+                        unitsStatus: 'ONGOING',
                       })
                     }
                     className="p-2.5 sm:p-3 bg-slate-50 hover:bg-rose-50/50 rounded-xl border border-[#CBD5E1] hover:border-rose-300 transition-all cursor-pointer flex items-center justify-between gap-2.5 sm:gap-3 group"

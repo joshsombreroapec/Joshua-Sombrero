@@ -87,6 +87,16 @@ export async function fetchDrilldown(
   params.set('drillLabel', target.label);
   params.set('value', target.value);
 
+  if (target.unitsStatus) {
+    params.set('unitsStatus', target.unitsStatus);
+  }
+  if (target.folderStatus) {
+    params.set('folderStatus', target.folderStatus);
+  }
+  if (target.incharge) {
+    params.set('incharge', target.incharge);
+  }
+
   if (target.category === 'kpiRemarks') {
     params.set('kpiRemarks', target.value);
   } else if (target.category === 'pwgUpdates') {

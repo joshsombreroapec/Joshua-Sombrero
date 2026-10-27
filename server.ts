@@ -432,24 +432,89 @@ app.use((req, res, next) => {
     return k.includes('ENERGIZED') && k.includes('WITHIN 21') && !k.includes('121');
   };
 
+  const matchesFacStatus = (recordFac: string, filterVal: string): boolean => {
+    if (!filterVal || filterVal === 'ALL') return true;
+    const raw = (recordFac || '').trim();
+    const f = filterVal.trim().toLowerCase();
+
+    if (f === '100% completed' || f === '100%' || f === '100') {
+      return raw === '100' || raw === '100%' || raw.toLowerCase().includes('100');
+    }
+    if (f === '0% not started' || f === '0%' || f === '0') {
+      return raw === '0' || raw === '0%' || raw.toLowerCase().includes('0% not started') || raw.toLowerCase().includes('not started');
+    }
+    const pctMatch = f.match(/^(\d+)%?$/);
+    if (pctMatch) {
+      const num = pctMatch[1];
+      return raw === num || raw === `${num}%`;
+    }
+    if (f === 'unspecified' || f === 'unspecified%' || f === 'blank' || f === '-' || f === 'none') {
+      return !raw || raw === '-' || raw.toLowerCase() === 'unspecified';
+    }
+    return raw.toLowerCase() === f || raw.toLowerCase().includes(f);
+  };
+
+  const matchesSepStatus = (recordSep: string, filterVal: string): boolean => {
+    if (!filterVal || filterVal === 'ALL') return true;
+    const raw = (recordSep || '').trim().toUpperCase();
+    const f = filterVal.trim().toUpperCase();
+
+    if (f.includes('YES') || f === 'SEP APPROVED (YES)') {
+      return raw === 'YES' || raw.includes('YES');
+    }
+    if ((f.includes('NO') && !f.includes('NOTREQ')) || f === 'NO SEP (NO)') {
+      return raw === 'NO' || raw.includes('NO');
+    }
+    if (f.includes('NOTREQ') || f.includes('NOT REQ')) {
+      return raw.includes('NOTREQ') || raw.includes('NOT REQ');
+    }
+    if (f === 'UNSPECIFIED' || f === 'BLANK' || f === '-') {
+      return !raw || raw === '-' || raw === 'UNSPECIFIED';
+    }
+    return raw === f;
+  };
+
+  const matchesCooStatus = (recordCoo: string, filterVal: string): boolean => {
+    if (!filterVal || filterVal === 'ALL') return true;
+    const raw = (recordCoo || '').trim().toLowerCase();
+    const f = filterVal.trim().toLowerCase();
+
+    if (f === 'unspecified' || f === 'blank' || f === '-') {
+      return !raw || raw === '-' || raw === 'unspecified';
+    }
+    return raw === f || raw.includes(f);
+  };
+
   function filterRecords(records: SheetRecord[], query: any): SheetRecord[] {
     const search = ((query.search as string) || '').toLowerCase().trim();
-    const unitsStatus = ((query.unitsStatus as string) || '').trim();
+    let unitsStatus = ((query.unitsStatus as string) || '').trim();
     const folderStatus = ((query.folderStatus as string) || '').trim();
     const incharge = ((query.incharge as string) || '').trim();
     const area = ((query.area as string) || '').trim();
-    const project = ((query.project as string) || '').trim();
+    let project = ((query.project as string) || '').trim();
     const block = ((query.block as string) || '').trim();
     const lot = ((query.lot as string) || '').trim();
     const stage = ((query.stage as string) || '').trim();
     const priorityMoveIn = ((query.priorityMoveIn as string) || '').trim();
     const pwgUpdates = ((query.pwgUpdates as string) || '').trim();
     const kpiRemarks = ((query.kpiRemarks as string) || '').trim();
-    const drillMetric = ((query.drillMetric as string) || '').trim();
+    let drillMetric = ((query.drillMetric as string) || '').trim();
     const month = ((query.month as string) || '').trim();
-    const facStatus = ((query.facStatus as string) || '').trim();
-    const cooStatus = ((query.cooStatus as string) || '').trim();
-    const sepStatus = ((query.sepStatus as string) || '').trim();
+    const facStatus = ((query.facStatus as string) || (query.category === 'facStatus' ? (query.value as string) : '') || '').trim();
+    const cooStatus = ((query.cooStatus as string) || (query.category === 'cooStatus' ? (query.value as string) : '') || '').trim();
+    const sepStatus = ((query.sepStatus as string) || (query.category === 'sepStatus' ? (query.value as string) : '') || '').trim();
+
+    if (!project && query.category === 'project' && query.value) {
+      project = (query.value as string).trim();
+    }
+
+    const drillLabel = ((query.drillLabel as string) || '').toUpperCase();
+    if (!unitsStatus && (drillLabel.includes('CRITICAL ONGOING') || drillLabel.includes('ONGOING DELAY') || drillLabel.includes('ONGOING UNITS'))) {
+      unitsStatus = 'ONGOING';
+    }
+    if (!drillMetric && (drillLabel.includes('WITHIN 21 DAYS ENERGIZED') || drillLabel.includes('WITHIN 21 DAYS'))) {
+      drillMetric = 'within21days';
+    }
 
     let filtered = records;
 
@@ -466,7 +531,10 @@ app.use((req, res, next) => {
           r.unitsStatus.toLowerCase().includes(search) ||
           r.folderStatus.toLowerCase().includes(search) ||
           r.kpiRemarks.toLowerCase().includes(search) ||
-          r.pwgUpdates.toLowerCase().includes(search)
+          r.pwgUpdates.toLowerCase().includes(search) ||
+          matchesFacStatus(r.facStatus, search) ||
+          matchesCooStatus(r.cooStatus, search) ||
+          matchesSepStatus(r.sepStatus, search)
         );
       });
     }
@@ -509,15 +577,15 @@ app.use((req, res, next) => {
     }
 
     if (facStatus && facStatus !== 'ALL') {
-      filtered = filtered.filter((r) => (r.facStatus || '').toLowerCase() === facStatus.toLowerCase());
+      filtered = filtered.filter((r) => matchesFacStatus(r.facStatus, facStatus));
     }
 
     if (cooStatus && cooStatus !== 'ALL') {
-      filtered = filtered.filter((r) => (r.cooStatus || '').toLowerCase() === cooStatus.toLowerCase());
+      filtered = filtered.filter((r) => matchesCooStatus(r.cooStatus, cooStatus));
     }
 
     if (sepStatus && sepStatus !== 'ALL') {
-      filtered = filtered.filter((r) => (r.sepStatus || '').toLowerCase() === sepStatus.toLowerCase());
+      filtered = filtered.filter((r) => matchesSepStatus(r.sepStatus, sepStatus));
     }
 
     if (drillMetric) {
@@ -724,7 +792,16 @@ app.use((req, res, next) => {
       const facStatusDistribution = Object.entries(facStatusMap)
         .sort((a, b) => b[1] - a[1])
         .map(([label, count]) => ({
-          label: label === '100' ? '100% Completed' : label === '0' ? '0% Not Started' : `${label}%`,
+          label:
+            label === '100'
+              ? '100% Completed'
+              : label === '0'
+              ? '0% Not Started'
+              : label === 'Unspecified' || !label
+              ? 'Unspecified'
+              : label.endsWith('%')
+              ? label
+              : `${label}%`,
           count,
           percentage: Number(((count / total) * 100).toFixed(1)),
         }));
@@ -1738,6 +1815,9 @@ app.use((req, res, next) => {
             label: drillLabel,
             metric: req.query.metric as string,
             month: req.query.month as string,
+            unitsStatus: (req.query.unitsStatus as string) || undefined,
+            folderStatus: (req.query.folderStatus as string) || undefined,
+            incharge: (req.query.incharge as string) || undefined,
           },
           totalUnits: filtered.length,
           inchargeBreakdown,
