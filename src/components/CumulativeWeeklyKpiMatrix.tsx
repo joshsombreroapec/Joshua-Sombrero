@@ -5,15 +5,20 @@ import { CumulativeKpiMatrixData, FilterState } from '../lib/types';
 interface CumulativeWeeklyKpiMatrixProps {
   filters: FilterState;
   onDrilldown?: (kpiRemark: string) => void;
+  forceWeekScope?: 'live' | 'all';
 }
 
 export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps> = ({
   filters,
   onDrilldown,
+  forceWeekScope,
 }) => {
   const [data, setData] = useState<CumulativeKpiMatrixData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedScope, setSelectedScope] = useState<'live' | 'all'>('live');
+
+  const activeScope = forceWeekScope || selectedScope;
 
   // Tooltip state
   const [hoveredCell, setHoveredCell] = useState<{
@@ -105,12 +110,24 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
     }
   };
 
+  // Computed visible reporting weeks:
+  // - 'live': focused on the current Live present week and recent weeks (last 6 weeks), ensuring full legibility and zero PDF clipping
+  // - 'all': all historical reporting weeks
+  const visibleWeeks = useMemo(() => {
+    if (!data?.weeks || data.weeks.length === 0) return [];
+    if (activeScope === 'live') {
+      const count = Math.min(6, data.weeks.length);
+      return data.weeks.slice(-count);
+    }
+    return data.weeks;
+  }, [data, activeScope]);
+
   return (
     <div className="space-y-4">
-      {/* 1. SECTION CARD HEADER (Weeks, Export CSV, and Weekly Counts buttons removed; Cumulative View only) */}
-      <div className="bg-white rounded-2xl p-6 border border-[#CBD5E1] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 1. SECTION CARD HEADER */}
+      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-[#CBD5E1] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
             <span className="p-2 rounded-xl bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/20">
               <Layers className="w-5 h-5" />
             </span>
@@ -127,17 +144,49 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
             <span className="px-2 py-0.5 text-xs font-bold bg-slate-800 text-slate-200 border border-slate-700 rounded-md">
               PAST WEEKS FROZEN & FINAL
             </span>
-            <span className="px-2 py-0.5 text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300 rounded-md">
-              Timezone: Asia/Manila (UTC+8)
-            </span>
+            {activeScope === 'live' && visibleWeeks.length > 0 && (
+              <span className="px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                Live Portion: {visibleWeeks[0]?.label} – {visibleWeeks[visibleWeeks.length - 1]?.label} (LIVE)
+              </span>
+            )}
           </div>
           <p className="text-xs text-[#334155] font-semibold mt-1.5 flex items-center gap-2 flex-wrap">
             <span>Weekly Periods: Monday through Sunday</span>
             <span>•</span>
             <span className="text-[#475569]">
-              Present Week is LIVE (in-progress updates); ended past weeks are Frozen & Final. Click any KPI remark to drill down.
+              Present Week is LIVE (in-progress updates); ended past weeks are Frozen & Final.
             </span>
           </p>
+        </div>
+
+        {/* View Scope Toggle: Live & Recent Weeks vs All Weeks */}
+        <div data-pdf-hide="true" className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-300 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => setSelectedScope('live')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeScope === 'live'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+            title="Focus on the Live present week and recent updates (Recommended for PDF)"
+          >
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span>Live Weeks ({Math.min(6, data?.weeks?.length || 6)})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedScope('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeScope === 'all'
+                ? 'bg-[#1E293B] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+            title="View all historical reporting weeks"
+          >
+            <span>All History ({data?.weeks?.length || 14} Weeks)</span>
+          </button>
         </div>
       </div>
 
@@ -164,10 +213,12 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
             {/* Mobile swipe helper indicator */}
             <div data-pdf-hide="true" className="md:hidden px-3 py-1.5 bg-blue-50 border-b border-blue-200 text-blue-800 text-[10px] font-bold flex items-center justify-between">
               <span>← Swipe horizontally to browse reporting weeks →</span>
-              <span className="font-mono">{data.weeks.length} Weeks</span>
+              <span className="font-mono">
+                {visibleWeeks.length} {activeScope === 'live' ? '(Live Portion)' : 'Weeks'}
+              </span>
             </div>
 
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="kpi-matrix-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#1E293B] text-white border-b border-[#CBD5E1]">
                   {/* Sticky KPI Remarks Column Header */}
@@ -176,11 +227,11 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
                   </th>
 
                   {/* Weekly Columns (Monday to Sunday) */}
-                  {data.weeks.map((week) => (
+                  {visibleWeeks.map((week) => (
                     <th
                       key={week.weekKey}
                       className={`px-2 sm:px-3 py-2 sm:py-3 text-center font-bold tracking-tight min-w-[85px] sm:min-w-[110px] border-l border-white/10 ${
-                        week.isLive ? 'bg-emerald-950/90 text-emerald-200 ring-2 ring-emerald-500/40' : ''
+                        week.isLive ? 'bg-emerald-950/90 text-emerald-200 ring-2 ring-emerald-500/40 kpi-live-cell' : ''
                       }`}
                     >
                       <div className="flex flex-col items-center">
@@ -230,7 +281,7 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
                       </td>
 
                       {/* Cumulative Weekly Period Values */}
-                      {data.weeks.map((week) => {
+                      {visibleWeeks.map((week) => {
                         const cumulativeCount = row.cumulativeCounts[week.weekKey] || 0;
                         const bgStyle = getCellBgClass(cumulativeCount, week.isLive);
 
@@ -240,7 +291,7 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
                             onClick={() => onDrilldown?.(row.kpiRemark)}
                             className={`px-2 py-2 text-center font-mono border-r border-[#CBD5E1]/60 transition-colors ${
                               onDrilldown ? 'cursor-pointer' : 'cursor-default'
-                            } ${bgStyle}`}
+                            } ${bgStyle} ${week.isLive ? 'font-bold' : ''}`}
                             onMouseEnter={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
                               setHoveredCell({
@@ -285,14 +336,14 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
                     Grand Total
                   </td>
 
-                  {data.weeks.map((week) => {
+                  {visibleWeeks.map((week) => {
                     const cumulativeSum = data.grandTotals.cumulativeCounts[week.weekKey] || 0;
 
                     return (
                       <td
                         key={week.weekKey}
                         className={`px-3 py-3.5 text-center font-mono font-black border-r border-white/10 ${
-                          week.isLive ? 'bg-emerald-950 text-emerald-300' : 'text-white'
+                          week.isLive ? 'bg-emerald-950 text-emerald-300 kpi-live-cell' : 'text-white'
                         }`}
                       >
                         <span className="text-xs block">

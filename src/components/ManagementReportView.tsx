@@ -53,6 +53,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfOrientation, setPdfOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [pdfKpiScope, setPdfKpiScope] = useState<'live' | 'all'>('live');
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [showCustomDate, setShowCustomDate] = useState(filters.datePreset === 'custom');
 
@@ -241,8 +242,8 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
       // Apply printing optimization class to force clean 1400px layout with no overflow clipping or sticky overlaps
       element.classList.add('pdf-export-mode');
 
-      // Small tick to ensure browser applies layout reflow
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      // Ensure browser applies layout reflow and live week matrix rendering
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       const targetWidth = 1400;
       const canvas = await html2canvas(element, {
@@ -514,6 +515,35 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
               title="Portrait orientation"
             >
               Portrait
+            </button>
+          </div>
+
+          {/* PDF KPI Weeks Scope Selector */}
+          <div className="flex items-center bg-slate-100 border border-[#CBD5E1] rounded-xl p-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setPdfKpiScope('live')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                pdfKpiScope === 'live'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="View Live Portion of weeks (Recommended for updated PDF report)"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span>Live Weeks</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPdfKpiScope('all')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                pdfKpiScope === 'all'
+                  ? 'bg-[#1E293B] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="View all reporting weeks"
+            >
+              <span>All Weeks</span>
             </button>
           </div>
 
@@ -916,6 +946,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
       <div data-pdf-section="matrix">
         <CumulativeWeeklyKpiMatrix
           filters={filters}
+          forceWeekScope={isExportingPdf ? pdfKpiScope : undefined}
           onDrilldown={(kpi) =>
             handleOpenDrilldown({
               category: 'kpiRemarks',

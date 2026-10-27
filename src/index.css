@@ -28,3 +28,21 @@ body {
   position: static !important;
   box-shadow: none !important;
 }
+
+.pdf-export-mode .kpi-matrix-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: auto !important;
+}
+
+.pdf-export-mode .kpi-matrix-table th,
+.pdf-export-mode .kpi-matrix-table td {
+  min-width: 0 !important;
+  box-shadow: none !important;
+}
+
+.pdf-export-mode .kpi-live-cell {
+  background-color: #064E3B !important;
+  color: #A7F3D0 !important;
+}
+
