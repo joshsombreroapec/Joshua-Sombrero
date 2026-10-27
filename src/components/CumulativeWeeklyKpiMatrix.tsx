@@ -162,7 +162,7 @@ export const CumulativeWeeklyKpiMatrix: React.FC<CumulativeWeeklyKpiMatrixProps>
             className="overflow-x-auto max-w-full relative touch-pan-x"
           >
             {/* Mobile swipe helper indicator */}
-            <div className="md:hidden px-3 py-1.5 bg-blue-50 border-b border-blue-200 text-blue-800 text-[10px] font-bold flex items-center justify-between">
+            <div data-pdf-hide="true" className="md:hidden px-3 py-1.5 bg-blue-50 border-b border-blue-200 text-blue-800 text-[10px] font-bold flex items-center justify-between">
               <span>← Swipe horizontally to browse reporting weeks →</span>
               <span className="font-mono">{data.weeks.length} Weeks</span>
             </div>

@@ -5,3 +5,26 @@ body {
   color: #1E293B;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
+
+/* PDF Export Optimization Styles */
+.pdf-export-mode {
+  width: 1400px !important;
+  max-width: 1400px !important;
+  min-width: 1400px !important;
+  background-color: #FFFFFF !important;
+}
+
+.pdf-export-mode [data-pdf-hide="true"] {
+  display: none !important;
+}
+
+.pdf-export-mode .overflow-x-auto {
+  overflow: visible !important;
+  max-width: none !important;
+}
+
+.pdf-export-mode th.sticky,
+.pdf-export-mode td.sticky {
+  position: static !important;
+  box-shadow: none !important;
+}

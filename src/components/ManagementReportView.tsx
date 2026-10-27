@@ -52,6 +52,8 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
 }) => {
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfOrientation, setPdfOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [showCustomDate, setShowCustomDate] = useState(filters.datePreset === 'custom');
 
   // Drilldown state
@@ -218,10 +220,15 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
     document.body.removeChild(link);
   };
 
-  // Export PDF Handler - Clean visual PDF fitting page width, spanning as many pages as needed with zero cut-off pages
-  const handleExportPDF = async () => {
+  // Export PDF Handler - Clean visual PDF fitting page width & height, spanning pages cleanly with zero cut-offs
+  const handleExportPDF = async (orientation: 'landscape' | 'portrait' = pdfOrientation) => {
     if (!reportRef.current) return;
     setIsExportingPdf(true);
+    setPdfError(null);
+
+    const element = reportRef.current;
+    const originalScrollX = window.scrollX;
+    const originalScrollY = window.scrollY;
 
     try {
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
@@ -229,23 +236,37 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
         import('html2canvas-pro'),
       ]);
 
-      const element = reportRef.current;
-      const originalScrollY = window.scrollY;
       window.scrollTo(0, 0);
 
+      // Apply printing optimization class to force clean 1400px layout with no overflow clipping or sticky overlaps
+      element.classList.add('pdf-export-mode');
+
+      // Small tick to ensure browser applies layout reflow
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      const targetWidth = 1400;
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
-        backgroundColor: '#F8FAFC',
-        windowWidth: document.documentElement.offsetWidth || 1280,
+        backgroundColor: '#FFFFFF',
+        width: targetWidth,
+        windowWidth: targetWidth,
+        scrollX: 0,
+        scrollY: 0,
       });
 
-      window.scrollTo(0, originalScrollY);
+      // Remove print mode immediately after canvas capture so UI is unaffected
+      element.classList.remove('pdf-export-mode');
+      window.scrollTo(originalScrollX, originalScrollY);
+
+      if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
+        throw new Error('Canvas render failed: Invalid canvas dimensions');
+      }
 
       const pdf = new jsPDF({
-        orientation: 'portrait',
+        orientation,
         unit: 'mm',
         format: 'a4',
       });
@@ -253,115 +274,183 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Margins in mm
-      const marginLeft = 8;
-      const marginRight = 8;
-      const marginTop = 8;
-      const marginBottom = 8;
+      // Margins in mm (room for running header and footer)
+      const marginLeft = 10;
+      const marginRight = 10;
+      const marginTop = 14;
+      const marginBottom = 14;
 
       const printableWidth = pageWidth - marginLeft - marginRight;
       const printableHeight = pageHeight - marginTop - marginBottom;
 
       const containerRect = element.getBoundingClientRect();
+      const totalCssHeight = element.offsetHeight || (canvas.height / 2);
+      const scaleFactor = printableWidth / targetWidth; // mm per CSS px
+      const maxPageCssHeight = printableHeight / scaleFactor;
+      const canvasScale = canvas.width / targetWidth;
 
-      // Collect all safe break points from cards, sections, and table rows
-      const breakCandidates: number[] = [];
+      // Collect safe break points from major structural cards, section containers, and table rows
+      const breakCandidates: number[] = [0];
       const breakElements = element.querySelectorAll<HTMLElement>(
-        '[data-pdf-section], tr, .p-5, .p-6, .grid > div'
+        '[data-pdf-section], table tbody tr, .rounded-2xl, .rounded-xl, .grid > div'
       );
 
       breakElements.forEach((el) => {
         const r = el.getBoundingClientRect();
+        const topY = r.top - containerRect.top;
         const bottomY = r.bottom - containerRect.top;
-        if (bottomY > 20 && bottomY < element.offsetHeight - 20) {
-          breakCandidates.push(bottomY);
+        if (topY > 20 && topY < totalCssHeight - 20) {
+          breakCandidates.push(Math.round(topY));
+        }
+        if (bottomY > 20 && bottomY < totalCssHeight - 20) {
+          breakCandidates.push(Math.round(bottomY));
         }
       });
 
-      const sortedBreakPoints = Array.from(new Set(breakCandidates)).sort((a, b) => a - b);
+      const sortedBreaks = Array.from(new Set(breakCandidates)).sort((a, b) => a - b);
 
-      const totalCssHeight = element.offsetHeight;
-      const scaleFactor = printableWidth / element.offsetWidth; // mm per CSS px
-      const maxPageCssHeight = printableHeight / scaleFactor;
-      const canvasScale = canvas.width / element.offsetWidth;
-
+      // Pre-compute page slices so we know exact totalPages in advance
+      const slices: { startY: number; endY: number }[] = [];
       let currentCssY = 0;
-      let pageIndex = 0;
 
       while (currentCssY < totalCssHeight) {
         let nextCssY = currentCssY + maxPageCssHeight;
 
         if (nextCssY >= totalCssHeight) {
-          nextCssY = totalCssHeight;
-        } else {
-          // Find the cleanest break point in the lower portion of the page to avoid cutting off elements
-          const validBreaks = sortedBreakPoints.filter(
-            (b) => b > currentCssY + 0.45 * maxPageCssHeight && b <= nextCssY
-          );
+          slices.push({ startY: currentCssY, endY: totalCssHeight });
+          break;
+        }
 
-          if (validBreaks.length > 0) {
-            nextCssY = validBreaks[validBreaks.length - 1];
+        // Look for best break between 60% and 100% of maxPageCssHeight
+        const preferredBreaks = sortedBreaks.filter(
+          (b) => b >= currentCssY + 0.6 * maxPageCssHeight && b <= nextCssY
+        );
+
+        let chosenBreak = nextCssY;
+        if (preferredBreaks.length > 0) {
+          chosenBreak = preferredBreaks[preferredBreaks.length - 1];
+        } else {
+          const fallbackBreaks = sortedBreaks.filter(
+            (b) => b >= currentCssY + 0.4 * maxPageCssHeight && b <= nextCssY
+          );
+          if (fallbackBreaks.length > 0) {
+            chosenBreak = fallbackBreaks[fallbackBreaks.length - 1];
           }
         }
 
-        const sliceCssHeight = nextCssY - currentCssY;
-        if (sliceCssHeight <= 0) break;
+        if (chosenBreak <= currentCssY + 15) {
+          chosenBreak = nextCssY;
+        }
 
-        const sliceCanvasHeight = Math.max(1, Math.round(sliceCssHeight * canvasScale));
+        slices.push({ startY: currentCssY, endY: chosenBreak });
+        currentCssY = chosenBreak;
+      }
+
+      const totalPages = Math.max(1, slices.length);
+
+      // Render each slice onto the PDF pages with header and footer
+      slices.forEach((slice, pageIdx) => {
+        const sliceCssHeight = slice.endY - slice.startY;
+        if (sliceCssHeight <= 0) return;
+
+        // Defensive coordinate bounds checking to guarantee zero IndexSizeError exceptions
+        const sourceY = Math.min(canvas.height - 1, Math.max(0, Math.round(slice.startY * canvasScale)));
+        const sourceHeight = Math.min(canvas.height - sourceY, Math.max(1, Math.round(sliceCssHeight * canvasScale)));
+
+        if (sourceHeight <= 0) return;
 
         const pageCanvas = document.createElement('canvas');
         pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceCanvasHeight;
+        pageCanvas.height = sourceHeight;
         const pageCtx = pageCanvas.getContext('2d');
 
-        if (pageCtx) {
-          pageCtx.drawImage(
-            canvas,
-            0,
-            Math.round(currentCssY * canvasScale),
-            canvas.width,
-            sliceCanvasHeight,
-            0,
-            0,
-            canvas.width,
-            sliceCanvasHeight
-          );
+        if (!pageCtx) return;
 
-          const pageImgData = pageCanvas.toDataURL('image/png');
-          const renderMmHeight = sliceCssHeight * scaleFactor;
+        pageCtx.drawImage(
+          canvas,
+          0,
+          sourceY,
+          canvas.width,
+          sourceHeight,
+          0,
+          0,
+          canvas.width,
+          sourceHeight
+        );
 
-          if (pageIndex > 0) {
-            pdf.addPage();
-          }
+        const pageImgData = pageCanvas.toDataURL('image/png');
+        const renderMmHeight = Math.min(printableHeight, (sourceHeight / canvasScale) * scaleFactor);
 
-          pdf.addImage(
-            pageImgData,
-            'PNG',
-            marginLeft,
-            marginTop,
-            printableWidth,
-            renderMmHeight,
-            undefined,
-            'FAST'
-          );
-
-          pageIndex++;
+        if (pageIdx > 0) {
+          pdf.addPage();
         }
 
-        currentCssY = nextCssY;
-      }
+        // Add page image
+        pdf.addImage(
+          pageImgData,
+          'PNG',
+          marginLeft,
+          marginTop,
+          printableWidth,
+          renderMmHeight,
+          undefined,
+          'FAST'
+        );
+
+        // Professional Running Header
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 116, 139); // slate-500
+        pdf.text('POWER-WATER GROUP (PWG) • EXECUTIVE MANAGEMENT REPORT', marginLeft, marginTop - 4);
+        pdf.text(reportDate, pageWidth - marginRight, marginTop - 4, { align: 'right' });
+        pdf.setDrawColor(203, 213, 225); // slate-300
+        pdf.setLineWidth(0.3);
+        pdf.line(marginLeft, marginTop - 2, pageWidth - marginRight, marginTop - 2);
+
+        // Professional Running Footer
+        const footerY = pageHeight - marginBottom + 5;
+        pdf.line(marginLeft, footerY - 2, pageWidth - marginRight, footerY - 2);
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text('OFFICIAL & CONFIDENTIAL REPORT • POWER-WATER GROUP', marginLeft, footerY + 2);
+        pdf.text(`Page ${pageIdx + 1} of ${totalPages}`, pageWidth - marginRight, footerY + 2, { align: 'right' });
+      });
 
       const dateStr = new Date().toISOString().split('T')[0];
       pdf.save(`Executive_Management_Report_${dateStr}.pdf`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to export PDF:', err);
+      setPdfError(err?.message || 'Failed to export PDF. Please try again.');
     } finally {
+      if (reportRef.current) {
+        reportRef.current.classList.remove('pdf-export-mode');
+      }
       setIsExportingPdf(false);
     }
   };
 
   return (
     <div ref={reportRef} className="space-y-4 sm:space-y-6">
+      {/* PDF Export Error Banner */}
+      {pdfError && (
+        <div
+          data-pdf-hide="true"
+          className="bg-rose-50 border border-rose-300 rounded-xl p-3 sm:p-4 text-rose-800 flex items-center justify-between gap-3 shadow-xs"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div className="text-xs sm:text-sm font-semibold">
+              <span className="font-bold">PDF Generation Error:</span> {pdfError}
+            </div>
+          </div>
+          <button
+            onClick={() => setPdfError(null)}
+            className="text-xs font-bold text-rose-700 hover:text-rose-900 bg-rose-100 hover:bg-rose-200 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* 1. EXECUTIVE REPORT HEADER (Top) */}
       <div
         data-pdf-section="header"
@@ -391,7 +480,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
         </div>
 
         {/* Action Buttons: Export CSV & Download PDF */}
-        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+        <div data-pdf-hide="true" className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1E293B] border border-[#CBD5E1] rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
@@ -400,8 +489,36 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
             <span>Export CSV</span>
           </button>
 
+          {/* Orientation Selector */}
+          <div className="flex items-center bg-slate-100 border border-[#CBD5E1] rounded-xl p-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setPdfOrientation('landscape')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                pdfOrientation === 'landscape'
+                  ? 'bg-white text-[#2563EB] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Landscape orientation (Recommended for wide weekly matrices)"
+            >
+              Landscape
+            </button>
+            <button
+              type="button"
+              onClick={() => setPdfOrientation('portrait')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                pdfOrientation === 'portrait'
+                  ? 'bg-white text-[#2563EB] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Portrait orientation"
+            >
+              Portrait
+            </button>
+          </div>
+
           <button
-            onClick={handleExportPDF}
+            onClick={() => handleExportPDF(pdfOrientation)}
             disabled={isExportingPdf}
             className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer disabled:opacity-50"
           >
@@ -439,6 +556,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
             {activeFilterCount > 0 && (
               <button
                 onClick={onResetFilters}
+                data-pdf-hide="true"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-200 hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer border border-rose-400/40"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
