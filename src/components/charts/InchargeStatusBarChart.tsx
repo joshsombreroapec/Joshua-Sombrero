@@ -10,8 +10,6 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
   data,
   onBarClick,
 }) => {
-  // Toggle between 'standard' (dedicated totals) and 'lifecycle' (mutually exclusive 1:1 partition)
-  const [viewMode, setViewMode] = useState<'standard' | 'lifecycle'>('standard');
   const [hoveredBar, setHoveredBar] = useState<{
     category: UnitStatusCategory;
     person: string;
@@ -35,11 +33,11 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
 
   const { categories, people, unmatchedCount, unmatchedDetails, totalAssignedUnits } = data;
 
-  // Extract counts for each person based on active view mode
+  // Extract strict filtered counts for each person
   const getCount = (personName: string, cat: UnitStatusCategory): number => {
     const p = people.find((item) => item.name === personName);
     if (!p) return 0;
-    return viewMode === 'standard' ? p.standardCounts[cat] || 0 : p.lifecycleCounts[cat] || 0;
+    return p.standardCounts[cat] || 0;
   };
 
   // Find max value across all visible bars
@@ -133,32 +131,11 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
           </p>
         </div>
 
-        {/* View Mode Toggle Pill & Assigned Units Count */}
+        {/* Active Filtered Status Breakdown Label & Assigned Units Count */}
         <div className="flex items-center gap-3 self-start lg:self-center flex-wrap">
-          <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-[#CBD5E1]">
-            <button
-              onClick={() => setViewMode('standard')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                viewMode === 'standard'
-                  ? 'bg-white text-[#1E293B] shadow-xs font-bold'
-                  : 'text-[#334155] hover:text-[#1E293B]'
-              }`}
-              title="Shows dedicated status volumes: Taken Out, Energized (excl. 21d), Within 21d, Ongoing, and NYS"
-            >
-              Standard Status Counts
-            </button>
-            <button
-              onClick={() => setViewMode('lifecycle')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                viewMode === 'lifecycle'
-                  ? 'bg-white text-[#1E293B] shadow-xs font-bold'
-                  : 'text-[#334155] hover:text-[#1E293B]'
-              }`}
-              title="Strict 100% mutually exclusive partition where each unit is counted exactly once"
-            >
-              Strict 1:1 Milestone Partition
-            </button>
-          </div>
+          <span className="px-3 py-1 text-xs font-bold text-[#1E293B] bg-slate-100 rounded-lg border border-[#CBD5E1]">
+            Filtered Status Breakdown
+          </span>
 
           <div className="text-xs text-[#334155] font-mono font-semibold bg-slate-100 px-3 py-1 rounded-md border border-[#CBD5E1]">
             In-Charge Total: <strong className="text-[#1E293B] font-extrabold">{totalAssignedUnits.toLocaleString()}</strong> units
@@ -192,10 +169,8 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
           })}
         </div>
 
-        <div className="text-[11px] text-[#475569] font-medium hidden sm:block">
-          {viewMode === 'standard'
-            ? 'Dedicated milestones: Taken Out & non-overlapping Within 21d vs. Energized'
-            : '100% partition: Taken Out ➔ Energized (21d) ➔ Energized ➔ Ongoing ➔ NYS'}
+        <div className="text-[11px] text-[#475569] font-semibold hidden sm:block">
+          Filtered Categories: Taken Out • Energized • Within 21 Days • Ongoing • NYS
         </div>
       </div>
 
@@ -385,18 +360,13 @@ export const InchargeStatusBarChart: React.FC<InchargeStatusBarChartProps> = ({
                   ) : cat === 'ENERGIZED' ? (
                     <text
                       x={catCenterX}
-                      y={paddingTop + chartHeight + 20}
+                      y={paddingTop + chartHeight + 24}
                       textAnchor="middle"
                       fill="#1E293B"
                       fontSize="11"
                       fontWeight="700"
                     >
-                      <tspan x={catCenterX} dy="0">
-                        ENERGIZED
-                      </tspan>
-                      <tspan x={catCenterX} dy="15" fill="#475569" fontSize="10" fontWeight="500">
-                        {viewMode === 'standard' ? '(EXCL. 21 DAYS)' : '(OTHER)'}
-                      </tspan>
+                      ENERGIZED
                     </text>
                   ) : cat === 'ONGOING' ? (
                     <text

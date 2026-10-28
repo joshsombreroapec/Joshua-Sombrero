@@ -694,7 +694,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onBarClick={(person, category) => {
           let metric = '';
           if (category === 'ENERGIZED') {
-            metric = 'energized_other';
+            metric = 'energized';
           } else if (category === 'ENERGIZED - 1. WITHIN 21 DAYS') {
             metric = 'within21days';
           } else if (category === 'ONGOING') {

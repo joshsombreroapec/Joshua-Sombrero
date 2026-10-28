@@ -489,7 +489,7 @@ app.use((req, res, next) => {
     const search = ((query.search as string) || '').toLowerCase().trim();
     let unitsStatus = ((query.unitsStatus as string) || '').trim();
     const folderStatus = ((query.folderStatus as string) || '').trim();
-    const incharge = ((query.incharge as string) || '').trim();
+    let incharge = ((query.incharge as string) || (query.category === 'inchargeStatus' ? (query.value as string) : '') || '').trim();
     const area = ((query.area as string) || '').trim();
     let project = ((query.project as string) || '').trim();
     const block = ((query.block as string) || '').trim();
@@ -590,14 +590,14 @@ app.use((req, res, next) => {
 
     if (drillMetric) {
       const m = drillMetric.toLowerCase();
-      if (m === 'energized') {
+      if (m === 'energized' || m === 'energized_other') {
         filtered = filtered.filter((r) => (r.unitsStatus || '').toUpperCase().includes('ENERGIZED'));
       } else if (m === 'ongoing') {
         filtered = filtered.filter((r) => (r.unitsStatus || '').toUpperCase().includes('ONGOING'));
       } else if (m === 'nys') {
-        filtered = filtered.filter((r) => (r.unitsStatus || '').toUpperCase().includes('NYS'));
+        filtered = filtered.filter((r) => (r.unitsStatus || '').toUpperCase().includes('NYS') || (r.unitsStatus || '').toUpperCase().includes('NOT YET STARTED'));
       } else if (m === 'takenout') {
-        filtered = filtered.filter((r) => (r.folderStatus || '').toUpperCase().includes('TAKEN OUT') || (r.takeoutDate && r.takeoutDate !== '-'));
+        filtered = filtered.filter((r) => (r.folderStatus || '').toUpperCase().includes('TAKEN OUT') || (r.folderStatus || '').toUpperCase().includes('TAKEOUT'));
       } else if (m === 'priority') {
         filtered = filtered.filter((r) => (r.priorityMoveIn || '').toUpperCase().includes('PRIORITY'));
       } else if (m === 'within21days') {
@@ -694,7 +694,7 @@ app.use((req, res, next) => {
         else if (uStatus.includes('ONGOING')) ongoingCount++;
         else if (uStatus.includes('NYS')) nysCount++;
 
-        const isTakenOut = (r.folderStatus || '').toUpperCase().includes('TAKEN OUT') || (r.takeoutDate && r.takeoutDate !== '-');
+        const isTakenOut = (r.folderStatus || '').toUpperCase().includes('TAKEN OUT') || (r.folderStatus || '').toUpperCase().includes('TAKEOUT');
         if (isTakenOut) takenOutCount++;
 
         const isPriority = (r.priorityMoveIn || '').toUpperCase().includes('PRIORITY');
@@ -1009,41 +1009,41 @@ app.use((req, res, next) => {
 
           const u = (r.unitsStatus || '').trim().toUpperCase();
           const f = (r.folderStatus || '').trim().toUpperCase();
-          const k = (r.kpiRemarks || '').trim().toUpperCase();
-          const t = (r.takeoutDate || '').trim();
 
-          const isTaken = f.includes('TAKEN OUT') || f.includes('TAKEOUT') || (t !== '' && t !== '-' && t !== '#N/A');
-          const isWithin21 = isEnergizedWithin21Days(r.kpiRemarks);
+          // Strict status definitions per user request
+          const isTaken = f.includes('TAKEN OUT') || f.includes('TAKEOUT');
           const isEnergized = u.includes('ENERGIZED');
+          const isWithin21 = isEnergizedWithin21Days(r.kpiRemarks);
           const isOngoing = u.includes('ONGOING');
           const isNys = u.includes('NYS') || u.includes('NOT YET STARTED');
 
-          // Standard counts (dedicated status metrics, non-overlapping energized)
+          // Taken out show only TAKEN OUT
           if (isTaken) {
             pStat.standardCounts['TAKEN OUT']++;
+            pStat.lifecycleCounts['TAKEN OUT']++;
           }
+          // Energized show only ENERGIZED
+          if (isEnergized) {
+            pStat.standardCounts['ENERGIZED']++;
+            pStat.lifecycleCounts['ENERGIZED']++;
+          }
+          // ENERGIZED- 1.WITHIN 21 DAYS only show ENERGIZED- 1.WITHIN 21 DAYS
           if (isWithin21) {
             pStat.standardCounts['ENERGIZED - 1. WITHIN 21 DAYS']++;
-          } else if (isEnergized) {
-            pStat.standardCounts['ENERGIZED']++;
-          } else if (isOngoing) {
+            pStat.lifecycleCounts['ENERGIZED - 1. WITHIN 21 DAYS']++;
+          }
+          // Ongoing only show ONGOING
+          if (isOngoing) {
             pStat.standardCounts['ONGOING']++;
-          } else if (isNys) {
+            pStat.lifecycleCounts['ONGOING']++;
+          }
+          // NYS show only NYS
+          if (isNys) {
             pStat.standardCounts['NYS']++;
+            pStat.lifecycleCounts['NYS']++;
           }
 
-          // Strict Lifecycle milestone partition (every single unit counted exactly once)
-          if (isTaken) {
-            pStat.lifecycleCounts['TAKEN OUT']++;
-          } else if (isWithin21) {
-            pStat.lifecycleCounts['ENERGIZED - 1. WITHIN 21 DAYS']++;
-          } else if (isEnergized) {
-            pStat.lifecycleCounts['ENERGIZED']++;
-          } else if (isOngoing) {
-            pStat.lifecycleCounts['ONGOING']++;
-          } else if (isNys) {
-            pStat.lifecycleCounts['NYS']++;
-          } else {
+          if (!isTaken && !isEnergized && !isOngoing && !isNys) {
             pStat.unmatchedCount++;
             if (unmatchedDetails.length < 50) {
               unmatchedDetails.push({
