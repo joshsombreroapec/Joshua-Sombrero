@@ -485,6 +485,15 @@ app.use((req, res, next) => {
     return raw === f || raw.includes(f);
   };
 
+  const parseMultiFilter = (val: any): string[] => {
+    if (!val) return [];
+    const rawList = Array.isArray(val) ? val : [val];
+    return rawList
+      .flatMap((v) => String(v).split('||'))
+      .map((s) => s.trim())
+      .filter((s) => s !== '' && s.toUpperCase() !== 'ALL');
+  };
+
   function filterRecords(records: SheetRecord[], query: any): SheetRecord[] {
     const search = ((query.search as string) || '').toLowerCase().trim();
     let unitsStatus = ((query.unitsStatus as string) || '').trim();
@@ -539,53 +548,74 @@ app.use((req, res, next) => {
       });
     }
 
-    if (unitsStatus && unitsStatus !== 'ALL') {
-      filtered = filtered.filter((r) => r.unitsStatus.toLowerCase() === unitsStatus.toLowerCase());
+    const unitsStatusList = parseMultiFilter(unitsStatus);
+    if (unitsStatusList.length > 0) {
+      const targetSet = new Set(unitsStatusList.map((s) => s.toLowerCase()));
+      filtered = filtered.filter((r) => targetSet.has((r.unitsStatus || 'Unknown').trim().toLowerCase()));
     }
 
-    if (folderStatus && folderStatus !== 'ALL') {
-      filtered = filtered.filter((r) => r.folderStatus.toLowerCase() === folderStatus.toLowerCase());
+    const folderStatusList = parseMultiFilter(folderStatus);
+    if (folderStatusList.length > 0) {
+      const targetSet = new Set(folderStatusList.map((s) => s.toLowerCase()));
+      filtered = filtered.filter((r) => targetSet.has((r.folderStatus || 'Unassigned').trim().toLowerCase()));
     }
 
-    if (incharge && incharge !== 'ALL') {
-      filtered = filtered.filter((r) => r.incharge.toLowerCase() === incharge.toLowerCase());
+    const inchargeList = parseMultiFilter(incharge);
+    if (inchargeList.length > 0) {
+      const targetSet = new Set(inchargeList.map((s) => s.toLowerCase()));
+      filtered = filtered.filter((r) => targetSet.has((r.incharge || 'Unassigned').trim().toLowerCase()));
     }
 
-    if (area && area !== 'ALL') {
-      filtered = filtered.filter((r) => r.areaSpe.toLowerCase() === area.toLowerCase());
+    const areaList = parseMultiFilter(area);
+    if (areaList.length > 0) {
+      const targetSet = new Set(areaList.map((s) => s.toLowerCase()));
+      filtered = filtered.filter((r) => targetSet.has((r.areaSpe || 'Unknown').trim().toLowerCase()));
     }
 
-    if (project && project !== 'ALL') {
-      filtered = filtered.filter((r) => r.project.toLowerCase() === project.toLowerCase());
+    const projectList = parseMultiFilter(project);
+    if (projectList.length > 0) {
+      const targetSet = new Set(projectList.map((s) => s.toLowerCase()));
+      filtered = filtered.filter((r) => targetSet.has((r.project || 'Unknown').trim().toLowerCase()));
     }
 
-    if (stage && stage !== 'ALL') {
-      filtered = filtered.filter((r) => r.stages.toLowerCase() === stage.toLowerCase());
+    const stageList = parseMultiFilter(stage);
+    if (stageList.length > 0) {
+      const targetSet = new Set(stageList.map((s) => s.toLowerCase()));
+      filtered = filtered.filter((r) => targetSet.has((r.stages || 'Unspecified').trim().toLowerCase()));
     }
 
-    if (pwgUpdates && pwgUpdates !== 'ALL') {
-      filtered = filtered.filter((r) => {
-        if (pwgUpdates === 'No Update' || pwgUpdates === 'Unassigned') {
-          return !r.pwgUpdates || r.pwgUpdates === '-';
-        }
-        return (r.pwgUpdates || '').toLowerCase() === pwgUpdates.toLowerCase();
-      });
+    const pwgUpdatesList = parseMultiFilter(pwgUpdates);
+    if (pwgUpdatesList.length > 0) {
+      filtered = filtered.filter((r) =>
+        pwgUpdatesList.some((p) => {
+          if (p === 'No Update' || p === 'Unassigned') {
+            return !r.pwgUpdates || r.pwgUpdates === '-';
+          }
+          return (r.pwgUpdates || '').trim().toLowerCase() === p.toLowerCase();
+        })
+      );
     }
 
-    if (kpiRemarks && kpiRemarks !== 'ALL') {
-      filtered = filtered.filter((r) => (r.kpiRemarks || '').toLowerCase().includes(kpiRemarks.toLowerCase()));
+    const kpiRemarksList = parseMultiFilter(kpiRemarks);
+    if (kpiRemarksList.length > 0) {
+      filtered = filtered.filter((r) =>
+        kpiRemarksList.some((k) => (r.kpiRemarks || '').toLowerCase().includes(k.toLowerCase()))
+      );
     }
 
-    if (facStatus && facStatus !== 'ALL') {
-      filtered = filtered.filter((r) => matchesFacStatus(r.facStatus, facStatus));
+    const facStatusList = parseMultiFilter(facStatus);
+    if (facStatusList.length > 0) {
+      filtered = filtered.filter((r) => facStatusList.some((f) => matchesFacStatus(r.facStatus, f)));
     }
 
-    if (cooStatus && cooStatus !== 'ALL') {
-      filtered = filtered.filter((r) => matchesCooStatus(r.cooStatus, cooStatus));
+    const cooStatusList = parseMultiFilter(cooStatus);
+    if (cooStatusList.length > 0) {
+      filtered = filtered.filter((r) => cooStatusList.some((c) => matchesCooStatus(r.cooStatus, c)));
     }
 
-    if (sepStatus && sepStatus !== 'ALL') {
-      filtered = filtered.filter((r) => matchesSepStatus(r.sepStatus, sepStatus));
+    const sepStatusList = parseMultiFilter(sepStatus);
+    if (sepStatusList.length > 0) {
+      filtered = filtered.filter((r) => sepStatusList.some((s) => matchesSepStatus(r.sepStatus, s)));
     }
 
     if (drillMetric) {
@@ -626,21 +656,34 @@ app.use((req, res, next) => {
     }
 
     if (block) {
-      filtered = filtered.filter((r) => r.block === block);
+      const blockList = block.split(/,|\|\|/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (blockList.length > 0) {
+        const blockSet = new Set(blockList);
+        filtered = filtered.filter((r) => blockSet.has((r.block || '').trim().toLowerCase()));
+      }
     }
 
     if (lot) {
-      filtered = filtered.filter((r) => r.lot === lot);
+      const lotList = lot.split(/,|\|\|/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (lotList.length > 0) {
+        const lotSet = new Set(lotList);
+        filtered = filtered.filter((r) => lotSet.has((r.lot || '').trim().toLowerCase()));
+      }
     }
 
-    if (priorityMoveIn && priorityMoveIn !== 'ALL') {
-      if (priorityMoveIn.toUpperCase() === 'PRIORITY') {
-        filtered = filtered.filter((r) => r.priorityMoveIn.toUpperCase().includes('PRIORITY'));
-      } else if (priorityMoveIn.toUpperCase() === 'NON_PRIORITY') {
-        filtered = filtered.filter((r) => !r.priorityMoveIn.toUpperCase().includes('PRIORITY'));
-      } else {
-        filtered = filtered.filter((r) => r.priorityMoveIn.toLowerCase() === priorityMoveIn.toLowerCase());
-      }
+    const priorityList = parseMultiFilter(priorityMoveIn);
+    if (priorityList.length > 0) {
+      filtered = filtered.filter((r) =>
+        priorityList.some((p) => {
+          const up = p.toUpperCase();
+          if (up === 'PRIORITY') {
+            return r.priorityMoveIn.toUpperCase().includes('PRIORITY');
+          } else if (up === 'NON_PRIORITY') {
+            return !r.priorityMoveIn.toUpperCase().includes('PRIORITY');
+          }
+          return r.priorityMoveIn.toLowerCase() === p.toLowerCase();
+        })
+      );
     }
 
     const startDateStr = ((query.startDate as string) || '').trim();

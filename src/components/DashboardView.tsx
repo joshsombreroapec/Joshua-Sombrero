@@ -22,6 +22,8 @@ import { VerticalBarChart } from './charts/VerticalBarChart';
 import { DonutPieChart } from './charts/DonutPieChart';
 import { InchargeStatusBarChart } from './charts/InchargeStatusBarChart';
 import { DashboardDrilldownModal } from './DashboardDrilldownModal';
+import { MultiSelectCheckboxFilter, ActiveFilterChips } from './MultiSelectCheckboxFilter';
+import { parseMultiFilter } from '../lib/filterUtils';
 
 interface DashboardViewProps {
   analytics: AnalyticsData | null;
@@ -153,17 +155,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     pwgUpdates: [],
   };
 
-  const activeFilterCount = [
-    filters.area,
-    filters.project,
-    filters.incharge,
-    filters.folderStatus,
-    filters.unitsStatus,
-    filters.priorityMoveIn,
-    filters.stage,
-    filters.pwgUpdates,
-    filters.startDate,
-  ].filter(Boolean).length;
+  const activeFilterCount =
+    parseMultiFilter(filters.area).length +
+    parseMultiFilter(filters.project).length +
+    parseMultiFilter(filters.incharge).length +
+    parseMultiFilter(filters.folderStatus).length +
+    parseMultiFilter(filters.unitsStatus).length +
+    parseMultiFilter(filters.priorityMoveIn).length +
+    parseMultiFilter(filters.stage).length +
+    parseMultiFilter(filters.pwgUpdates).length +
+    (filters.startDate ? 1 : 0);
 
   return (
     <div className="space-y-6 pb-8">
@@ -220,99 +221,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Filter Dropdowns Grid: background #0F172A, text #FFFFFF, border #CBD5E1/40 */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* Area */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
-              Area
-            </label>
-            <select
-              value={filters.area}
-              onChange={(e) => onFilterChange({ area: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Areas</option>
-              {distinct.areas.map((a) => (
-                <option key={a} value={a} className="bg-[#0F172A] text-white">
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Area"
+            options={distinct.areas}
+            value={filters.area}
+            onChange={(val) => onFilterChange({ area: val })}
+            placeholder="All Areas"
+          />
 
           {/* Project */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
-              Project
-            </label>
-            <select
-              value={filters.project}
-              onChange={(e) => onFilterChange({ project: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Projects ({distinct.projects.length})</option>
-              {distinct.projects.map((p) => (
-                <option key={p} value={p} className="bg-[#0F172A] text-white">
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Project"
+            options={distinct.projects}
+            value={filters.project}
+            onChange={(val) => onFilterChange({ project: val })}
+            placeholder={`All Projects (${distinct.projects.length})`}
+            searchable
+          />
 
           {/* In charge */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
-              In Charge
-            </label>
-            <select
-              value={filters.incharge}
-              onChange={(e) => onFilterChange({ incharge: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Personnel</option>
-              {distinct.incharge.map((i) => (
-                <option key={i} value={i} className="bg-[#0F172A] text-white">
-                  {i}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="In Charge"
+            options={distinct.incharge}
+            value={filters.incharge}
+            onChange={(val) => onFilterChange({ incharge: val })}
+            placeholder="All Personnel"
+          />
 
           {/* Folder Status */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
-              Folder Status
-            </label>
-            <select
-              value={filters.folderStatus}
-              onChange={(e) => onFilterChange({ folderStatus: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Folders</option>
-              {distinct.folderStatuses.map((f) => (
-                <option key={f} value={f} className="bg-[#0F172A] text-white">
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Folder Status"
+            options={distinct.folderStatuses}
+            value={filters.folderStatus}
+            onChange={(val) => onFilterChange({ folderStatus: val })}
+            placeholder="All Folders"
+          />
 
           {/* Unit Status */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
-              Unit Status
-            </label>
-            <select
-              value={filters.unitsStatus}
-              onChange={(e) => onFilterChange({ unitsStatus: e.target.value })}
-              className="w-full py-2 px-3 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Statuses</option>
-              {distinct.unitsStatuses.map((s) => (
-                <option key={s} value={s} className="bg-[#0F172A] text-white">
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Unit Status"
+            options={distinct.unitsStatuses}
+            value={filters.unitsStatus}
+            onChange={(val) => onFilterChange({ unitsStatus: val })}
+            placeholder="All Statuses"
+            align="right"
+          />
 
           {/* Date Range Picker (Default: All Time) */}
           <div>
@@ -354,6 +307,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
           </div>
         )}
+
+        {/* Active Multi-Select Filter Chips */}
+        <ActiveFilterChips
+          groups={[
+            { key: 'area', label: 'Area', value: filters.area, onChange: (val) => onFilterChange({ area: val }) },
+            { key: 'project', label: 'Project', value: filters.project, onChange: (val) => onFilterChange({ project: val }) },
+            { key: 'incharge', label: 'In Charge', value: filters.incharge, onChange: (val) => onFilterChange({ incharge: val }) },
+            { key: 'folderStatus', label: 'Folder', value: filters.folderStatus, onChange: (val) => onFilterChange({ folderStatus: val }) },
+            { key: 'unitsStatus', label: 'Status', value: filters.unitsStatus, onChange: (val) => onFilterChange({ unitsStatus: val }) },
+          ]}
+        />
       </div>
 
       {/* 2. LARGE KPI SUMMARY CARDS (Background white, border #CBD5E1, main text #1E293B, secondary #475569) */}

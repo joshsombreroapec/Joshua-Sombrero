@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { SheetRecord, FilterState, PaginationMeta, SummaryData } from '../lib/types';
 import { exportFilteredCSV } from '../lib/api';
+import { MultiSelectCheckboxFilter, ActiveFilterChips } from './MultiSelectCheckboxFilter';
+import { formatMultiFilter, parseMultiFilter } from '../lib/filterUtils';
 
 interface DirectoryViewProps {
   records: SheetRecord[];
@@ -57,19 +59,19 @@ export const DirectoryView: React.FC<DirectoryViewProps> = ({
     }
   };
 
-  const activeFilterCount = [
-    filters.unitsStatus,
-    filters.incharge,
-    filters.project,
-    filters.area,
-    filters.folderStatus,
-    filters.priorityMoveIn,
-    filters.block,
-    filters.lot,
-    filters.stage,
-    filters.startDate,
-    filters.search,
-  ].filter(Boolean).length;
+  const activeFilterCount =
+    parseMultiFilter(filters.unitsStatus).length +
+    parseMultiFilter(filters.incharge).length +
+    parseMultiFilter(filters.project).length +
+    parseMultiFilter(filters.area).length +
+    parseMultiFilter(filters.folderStatus).length +
+    parseMultiFilter(filters.priorityMoveIn).length +
+    parseMultiFilter(filters.stage).length +
+    parseMultiFilter(filters.pwgUpdates).length +
+    (filters.block ? 1 : 0) +
+    (filters.lot ? 1 : 0) +
+    (filters.startDate ? 1 : 0) +
+    (filters.search ? 1 : 0);
 
   const getStatusBadge = (status: string) => {
     const s = (status || '').toUpperCase();
@@ -146,115 +148,69 @@ export const DirectoryView: React.FC<DirectoryViewProps> = ({
         {/* Filters Grid: Inputs & Dropdowns #0F172A with text-white */}
         <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1 ${showFiltersMobile ? 'block' : 'hidden sm:grid'}`}>
           {/* Status filter */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Unit Status
-            </label>
-            <select
-              value={filters.unitsStatus}
-              onChange={(e) => onFilterChange({ unitsStatus: e.target.value })}
-              className="w-full py-1.5 px-2 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB]"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Statuses</option>
-              {summary?.distinctValues.unitsStatuses.map((s) => (
-                <option key={s} value={s} className="bg-[#0F172A] text-white">
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Unit Status"
+            options={summary?.distinctValues.unitsStatuses || []}
+            value={filters.unitsStatus}
+            onChange={(val) => onFilterChange({ unitsStatus: val })}
+            placeholder="All Statuses"
+            compact
+          />
 
           {/* In charge filter */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              In Charge
-            </label>
-            <select
-              value={filters.incharge}
-              onChange={(e) => onFilterChange({ incharge: e.target.value })}
-              className="w-full py-1.5 px-2 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB]"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Personnel</option>
-              {summary?.distinctValues.incharge.map((inch) => (
-                <option key={inch} value={inch} className="bg-[#0F172A] text-white">
-                  {inch}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="In Charge"
+            options={summary?.distinctValues.incharge || []}
+            value={filters.incharge}
+            onChange={(val) => onFilterChange({ incharge: val })}
+            placeholder="All Personnel"
+            compact
+          />
 
           {/* Project filter */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Project ({summary?.distinctValues.projects.length || 0})
-            </label>
-            <select
-              value={filters.project}
-              onChange={(e) => onFilterChange({ project: e.target.value })}
-              className="w-full py-1.5 px-2 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Projects</option>
-              {summary?.distinctValues.projects.map((proj) => (
-                <option key={proj} value={proj} className="bg-[#0F172A] text-white">
-                  {proj}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label={`Project (${summary?.distinctValues.projects.length || 0})`}
+            options={summary?.distinctValues.projects || []}
+            value={filters.project}
+            onChange={(val) => onFilterChange({ project: val })}
+            placeholder="All Projects"
+            compact
+            searchable
+          />
 
           {/* Area SPE filter */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Area / SPE
-            </label>
-            <select
-              value={filters.area}
-              onChange={(e) => onFilterChange({ area: e.target.value })}
-              className="w-full py-1.5 px-2 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB]"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Areas</option>
-              {summary?.distinctValues.areas.map((a) => (
-                <option key={a} value={a} className="bg-[#0F172A] text-white">
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Area / SPE"
+            options={summary?.distinctValues.areas || []}
+            value={filters.area}
+            onChange={(val) => onFilterChange({ area: val })}
+            placeholder="All Areas"
+            compact
+          />
 
           {/* Folder Status */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Folder Status
-            </label>
-            <select
-              value={filters.folderStatus}
-              onChange={(e) => onFilterChange({ folderStatus: e.target.value })}
-              className="w-full py-1.5 px-2 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Folders</option>
-              {summary?.distinctValues.folderStatuses.map((f) => (
-                <option key={f} value={f} className="bg-[#0F172A] text-white">
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Folder Status"
+            options={summary?.distinctValues.folderStatuses || []}
+            value={filters.folderStatus}
+            onChange={(val) => onFilterChange({ folderStatus: val })}
+            placeholder="All Folders"
+            compact
+          />
 
           {/* Priority Move-In */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Priority Move-In
-            </label>
-            <select
-              value={filters.priorityMoveIn}
-              onChange={(e) => onFilterChange({ priorityMoveIn: e.target.value })}
-              className="w-full py-1.5 px-2 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB]"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Priorities</option>
-              <option value="PRIORITY" className="bg-[#0F172A] text-white">Priority Only 🔥</option>
-              <option value="NON_PRIORITY" className="bg-[#0F172A] text-white">Standard (Non-Priority)</option>
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Priority Move-In"
+            options={[
+              { value: 'PRIORITY', label: 'Priority Only 🔥' },
+              { value: 'NON_PRIORITY', label: 'Standard (Non-Priority)' },
+            ]}
+            value={filters.priorityMoveIn}
+            onChange={(val) => onFilterChange({ priorityMoveIn: val })}
+            placeholder="All Priorities"
+            compact
+            align="right"
+          />
         </div>
 
         {/* Block, Lot, Export CSV button, and Stage dropdown */}
@@ -266,8 +222,8 @@ export const DirectoryView: React.FC<DirectoryViewProps> = ({
                 type="text"
                 value={filters.block}
                 onChange={(e) => onFilterChange({ block: e.target.value })}
-                placeholder="e.g. 1"
-                className="w-20 px-2.5 py-1 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-mono font-bold text-white placeholder:text-slate-400"
+                placeholder="e.g. 1, 2"
+                className="w-24 px-2.5 py-1 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-mono font-bold text-white placeholder:text-slate-400"
               />
             </div>
             <div className="flex items-center gap-1.5">
@@ -276,8 +232,8 @@ export const DirectoryView: React.FC<DirectoryViewProps> = ({
                 type="text"
                 value={filters.lot}
                 onChange={(e) => onFilterChange({ lot: e.target.value })}
-                placeholder="e.g. 10"
-                className="w-20 px-2.5 py-1 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-mono font-bold text-white placeholder:text-slate-400"
+                placeholder="e.g. 10, 11"
+                className="w-24 px-2.5 py-1 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-mono font-bold text-white placeholder:text-slate-400"
               />
             </div>
           </div>
@@ -300,23 +256,39 @@ export const DirectoryView: React.FC<DirectoryViewProps> = ({
 
             {summary?.distinctValues.stages && (
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-white font-bold">Stage:</span>
-                <select
-                  value={filters.stage}
-                  onChange={(e) => onFilterChange({ stage: e.target.value })}
-                  className="py-1 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-lg text-xs font-bold text-white"
-                >
-                  <option value="" className="bg-[#0F172A] text-white">All Stages</option>
-                  {summary.distinctValues.stages.map((stg) => (
-                    <option key={stg} value={stg} className="bg-[#0F172A] text-white">
-                      {stg}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-xs text-white font-bold shrink-0">Stage:</span>
+                <div className="w-36">
+                  <MultiSelectCheckboxFilter
+                    options={summary.distinctValues.stages}
+                    value={filters.stage}
+                    onChange={(val) => onFilterChange({ stage: val })}
+                    placeholder="All Stages"
+                    compact
+                    align="right"
+                  />
+                </div>
               </div>
             )}
           </div>
         </div>
+
+        <ActiveFilterChips
+          groups={[
+            { key: 'unitsStatus', label: 'Status', value: filters.unitsStatus, onChange: (val) => onFilterChange({ unitsStatus: val }) },
+            { key: 'incharge', label: 'In Charge', value: filters.incharge, onChange: (val) => onFilterChange({ incharge: val }) },
+            { key: 'project', label: 'Project', value: filters.project, onChange: (val) => onFilterChange({ project: val }) },
+            { key: 'area', label: 'Area', value: filters.area, onChange: (val) => onFilterChange({ area: val }) },
+            { key: 'folderStatus', label: 'Folder', value: filters.folderStatus, onChange: (val) => onFilterChange({ folderStatus: val }) },
+            {
+              key: 'priorityMoveIn',
+              label: 'Priority',
+              value: filters.priorityMoveIn,
+              labelMap: { PRIORITY: 'Priority Only', NON_PRIORITY: 'Standard' },
+              onChange: (val) => onFilterChange({ priorityMoveIn: val }),
+            },
+            { key: 'stage', label: 'Stage', value: filters.stage, onChange: (val) => onFilterChange({ stage: val }) },
+          ]}
+        />
 
         {(filters.search || filters.startDate || filters.pwgUpdates) && (
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#475569] text-[11px]">
@@ -334,7 +306,7 @@ export const DirectoryView: React.FC<DirectoryViewProps> = ({
             )}
             {filters.pwgUpdates && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0F172A] text-white border border-[#CBD5E1]/40 font-medium">
-                <span>PWG Update: "{filters.pwgUpdates}"</span>
+                <span>PWG Update: "{formatMultiFilter(filters.pwgUpdates)}"</span>
                 <button
                   onClick={() => onFilterChange({ pwgUpdates: '' })}
                   className="hover:text-rose-400 font-bold ml-1 cursor-pointer"

@@ -155,6 +155,7 @@ export async function fetchRecords(
   if (filters.lot) params.set('lot', filters.lot);
   if (filters.priorityMoveIn) params.set('priorityMoveIn', filters.priorityMoveIn);
   if (filters.stage) params.set('stage', filters.stage);
+  if (filters.pwgUpdates) params.set('pwgUpdates', filters.pwgUpdates);
   if (filters.startDate) params.set('startDate', filters.startDate);
   if (filters.endDate) params.set('endDate', filters.endDate);
 

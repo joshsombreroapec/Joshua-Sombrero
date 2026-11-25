@@ -30,6 +30,8 @@ import { fetchDrilldown } from '../lib/api';
 import { HorizontalBarChart } from './charts/HorizontalBarChart';
 import { CumulativeWeeklyKpiMatrix } from './CumulativeWeeklyKpiMatrix';
 import { DashboardDrilldownModal } from './DashboardDrilldownModal';
+import { MultiSelectCheckboxFilter, ActiveFilterChips } from './MultiSelectCheckboxFilter';
+import { formatMultiFilter, parseMultiFilter } from '../lib/filterUtils';
 
 interface ManagementReportViewProps {
   summary: SummaryData | null;
@@ -104,17 +106,16 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
     pwgUpdates: [],
   };
 
-  const activeFilterCount = [
-    filters.area,
-    filters.project,
-    filters.incharge,
-    filters.folderStatus,
-    filters.unitsStatus,
-    filters.stage,
-    filters.priorityMoveIn,
-    filters.datePreset && filters.datePreset !== 'all' ? filters.datePreset : '',
-    filters.startDate,
-  ].filter(Boolean).length;
+  const activeFilterCount =
+    parseMultiFilter(filters.area).length +
+    parseMultiFilter(filters.project).length +
+    parseMultiFilter(filters.incharge).length +
+    parseMultiFilter(filters.folderStatus).length +
+    parseMultiFilter(filters.unitsStatus).length +
+    parseMultiFilter(filters.stage).length +
+    parseMultiFilter(filters.priorityMoveIn).length +
+    (filters.datePreset && filters.datePreset !== 'all' ? 1 : 0) +
+    (filters.startDate ? 1 : 0);
 
   const handleDatePresetChange = (preset: string) => {
     const today = new Date('2026-10-23');
@@ -161,7 +162,7 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
     const csvRows = [
       ['PWG Individual Energization - Executive Management Report'],
       [`Report Date: ${reportDate}`],
-      ['Active Filters', `Area: ${filters.area || 'All'}, Project: ${filters.project || 'All'}, In-Charge: ${filters.incharge || 'All'}, Date Range: ${filters.datePreset || 'all'}`],
+      ['Active Filters', `"Area: ${formatMultiFilter(filters.area)}, Project: ${formatMultiFilter(filters.project)}, In-Charge: ${formatMultiFilter(filters.incharge)}, Folder: ${formatMultiFilter(filters.folderStatus)}, Status: ${formatMultiFilter(filters.unitsStatus)}, Date Range: ${filters.datePreset || 'all'}"`],
       [''],
       ['PORTFOLIO KPI SUMMARY'],
       ['Metric', 'Unit Count', 'Percentage'],
@@ -599,99 +600,51 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
         {/* Filter Dropdowns Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
           {/* Area */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Area
-            </label>
-            <select
-              value={filters.area}
-              onChange={(e) => onFilterChange({ area: e.target.value })}
-              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Areas</option>
-              {distinct.areas.map((a) => (
-                <option key={a} value={a} className="bg-[#0F172A] text-white">
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Area"
+            options={distinct.areas}
+            value={filters.area}
+            onChange={(val) => onFilterChange({ area: val })}
+            placeholder="All Areas"
+          />
 
           {/* Project */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Project
-            </label>
-            <select
-              value={filters.project}
-              onChange={(e) => onFilterChange({ project: e.target.value })}
-              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Projects ({distinct.projects.length})</option>
-              {distinct.projects.map((p) => (
-                <option key={p} value={p} className="bg-[#0F172A] text-white">
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Project"
+            options={distinct.projects}
+            value={filters.project}
+            onChange={(val) => onFilterChange({ project: val })}
+            placeholder={`All Projects (${distinct.projects.length})`}
+            searchable
+          />
 
           {/* In charge */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              In Charge
-            </label>
-            <select
-              value={filters.incharge}
-              onChange={(e) => onFilterChange({ incharge: e.target.value })}
-              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Personnel</option>
-              {distinct.incharge.map((i) => (
-                <option key={i} value={i} className="bg-[#0F172A] text-white">
-                  {i}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="In Charge"
+            options={distinct.incharge}
+            value={filters.incharge}
+            onChange={(val) => onFilterChange({ incharge: val })}
+            placeholder="All Personnel"
+          />
 
           {/* Folder Status */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Folder Status
-            </label>
-            <select
-              value={filters.folderStatus}
-              onChange={(e) => onFilterChange({ folderStatus: e.target.value })}
-              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all truncate"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Folders</option>
-              {distinct.folderStatuses.map((f) => (
-                <option key={f} value={f} className="bg-[#0F172A] text-white">
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Folder Status"
+            options={distinct.folderStatuses}
+            value={filters.folderStatus}
+            onChange={(val) => onFilterChange({ folderStatus: val })}
+            placeholder="All Folders"
+          />
 
           {/* Unit Status */}
-          <div>
-            <label className="block text-xs font-bold text-white mb-1">
-              Unit Status
-            </label>
-            <select
-              value={filters.unitsStatus}
-              onChange={(e) => onFilterChange({ unitsStatus: e.target.value })}
-              className="w-full py-2 px-2.5 bg-[#0F172A] border border-[#CBD5E1]/40 rounded-xl text-xs font-bold text-white focus:outline-hidden focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/30 transition-all"
-            >
-              <option value="" className="bg-[#0F172A] text-white">All Statuses</option>
-              {distinct.unitsStatuses.map((s) => (
-                <option key={s} value={s} className="bg-[#0F172A] text-white">
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MultiSelectCheckboxFilter
+            label="Unit Status"
+            options={distinct.unitsStatuses}
+            value={filters.unitsStatus}
+            onChange={(val) => onFilterChange({ unitsStatus: val })}
+            placeholder="All Statuses"
+            align="right"
+          />
 
           {/* Date Range Picker */}
           <div>
@@ -733,6 +686,17 @@ export const ManagementReportView: React.FC<ManagementReportViewProps> = ({
             />
           </div>
         )}
+
+        {/* Active Multi-Select Filter Chips */}
+        <ActiveFilterChips
+          groups={[
+            { key: 'area', label: 'Area', value: filters.area, onChange: (val) => onFilterChange({ area: val }) },
+            { key: 'project', label: 'Project', value: filters.project, onChange: (val) => onFilterChange({ project: val }) },
+            { key: 'incharge', label: 'In Charge', value: filters.incharge, onChange: (val) => onFilterChange({ incharge: val }) },
+            { key: 'folderStatus', label: 'Folder', value: filters.folderStatus, onChange: (val) => onFilterChange({ folderStatus: val }) },
+            { key: 'unitsStatus', label: 'Status', value: filters.unitsStatus, onChange: (val) => onFilterChange({ unitsStatus: val }) },
+          ]}
+        />
       </div>
 
       {/* 3. KPI SUMMARY CARDS WITH VISUAL DRILLDOWN */}
